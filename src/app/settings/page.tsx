@@ -66,8 +66,7 @@ export default function SettingsPage() {
   );
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
-  const isDevelopment = process.env.NODE_ENV !== "production";
-  const shouldShowDevTools = isDevelopment && appState.userSettings.showDevTools;
+  const shouldShowDevTools = appState.userSettings.showDevTools;
 
   useEffect(() => {
     if (!isHydrated) {
@@ -305,7 +304,7 @@ export default function SettingsPage() {
 
           <ToggleCard
             title="显示开发测试工具"
-            description="只在开发环境下生效。关闭后会隐藏加宝石和抽卡动画测试按钮。"
+            description="开启后会显示加宝石和抽卡动画测试按钮。"
             checked={showDevTools}
             onChange={(checked) => {
               setShowDevTools(checked);

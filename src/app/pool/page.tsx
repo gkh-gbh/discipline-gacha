@@ -61,8 +61,7 @@ export default function PoolPage() {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [tenPullOverlay, setTenPullOverlay] = useState<TenPullOverlayState | null>(null);
 
-  const isDevelopment = process.env.NODE_ENV !== "production";
-  const showDevTools = isDevelopment && appState.userSettings.showDevTools;
+  const showDevTools = appState.userSettings.showDevTools;
   const gachaCost = appState.userSettings.gachaCost;
   const tenPullCost = gachaCost * TEN_PULL_COUNT;
   const latestPull = getLatestGachaPull(appState);
