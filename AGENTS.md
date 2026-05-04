@@ -17,10 +17,12 @@ Personal discipline/gacha app ("discipline-gacha") — a gamified task system wh
 npm run dev          # Dev server on port 43017
 npm run build        # Production build
 npm run lint         # ESLint (next/core-web-vitals)
+npm run test         # Vitest (run once)
+npm run test:watch   # Vitest (watch mode)
 npm run start        # Serve production build on port 43017
 ```
 
-No test framework is configured. No typecheck script — use `npx tsc --noEmit` if needed.
+No typecheck script — use `npx tsc --noEmit` if needed.
 
 ## Architecture
 
