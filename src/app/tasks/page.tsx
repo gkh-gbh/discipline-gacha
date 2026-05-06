@@ -786,8 +786,14 @@ function TaskComposer(props: {
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-stone-700">每周目标次数</span>
             <select
-              value={props.weeklyTarget}
-              onChange={(event) => props.onWeeklyTargetChange?.(event.target.value)}
+              value={[1, 2, 3, 4, 5, 6, 7].includes(props.weeklyTarget) ? String(props.weeklyTarget) : "custom"}
+              onChange={(event) => {
+                if (event.target.value !== "custom") {
+                  props.onWeeklyTargetChange?.(event.target.value);
+                } else {
+                  props.onWeeklyTargetChange?.("0");
+                }
+              }}
               className="w-full rounded-2xl border border-[var(--line)] bg-[var(--card-strong)] px-4 py-3 outline-none"
             >
               {[1, 2, 3, 4, 5, 6, 7].map((n) => (
@@ -795,7 +801,27 @@ function TaskComposer(props: {
                   每周 {n} 次
                 </option>
               ))}
+              <option value="custom">自定义...</option>
             </select>
+            {![1, 2, 3, 4, 5, 6, 7].includes(props.weeklyTarget) ? (
+              <input
+                type="number"
+                min="1"
+                max="30"
+                step="1"
+                value={props.weeklyTarget || ""}
+                onChange={(event) => {
+                  const val = parseInt(event.target.value, 10);
+                  if (Number.isFinite(val) && val >= 1 && val <= 30) {
+                    props.onWeeklyTargetChange?.(String(val));
+                  } else if (event.target.value === "") {
+                    props.onWeeklyTargetChange?.("0");
+                  }
+                }}
+                placeholder="输入次数（1-30）"
+                className="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
+              />
+            ) : null}
           </label>
           <div className="flex items-end">
             <div className="rounded-[22px] bg-white/65 px-4 py-3 text-sm text-stone-700">
