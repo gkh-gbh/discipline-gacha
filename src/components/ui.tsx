@@ -167,6 +167,9 @@ export function TaskPreviewList(props: {
         {props.items.map((item) => {
           const difficulty = difficultyMeta[item.difficulty];
           const isCompleted = item.status === "completed";
+          const isWeeklyTargetReached = item.type === "series" && item.weeklyTarget
+            && (item.weeklyCompletedCount || 0) >= item.weeklyTarget;
+          const showCheckIcon = isCompleted || isWeeklyTargetReached;
 
           return (
             <div
@@ -175,7 +178,7 @@ export function TaskPreviewList(props: {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
-                  {isCompleted ? (
+                  {showCheckIcon ? (
                     <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-teal-700" />
                   ) : (
                     <CircleDashed className="mt-0.5 h-5 w-5 shrink-0 text-stone-400" />
@@ -210,7 +213,9 @@ export function TaskPreviewList(props: {
                     <p className="muted mt-2 text-xs">
                       {isCompleted
                         ? `完成时间 ${formatTaskTimestamp(item.completedAt) ?? "-"}`
-                        : `创建时间 ${formatTaskTimestamp(item.createdAt) ?? "-"}`}
+                        : isWeeklyTargetReached
+                          ? "周目标已达成，可继续完成"
+                          : `创建时间 ${formatTaskTimestamp(item.createdAt) ?? "-"}`}
                     </p>
                   </div>
                 </div>
