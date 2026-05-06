@@ -463,7 +463,7 @@ export default function SettingsPage() {
         <SectionCard
           eyebrow="Budget"
           title="月预算提示"
-          description="当前仅用于提示，不会阻止抽卡奖励继续入账。"
+          description="本月消费达到上限后，无法继续记录消费。抽卡奖励不受影响。"
         >
           <div className="grid gap-4 sm:grid-cols-3">
             <SummaryCard label="本月上限" value={`¥${appState.userSettings.monthlyBudgetLimit}`} />

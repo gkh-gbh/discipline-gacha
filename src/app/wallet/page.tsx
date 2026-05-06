@@ -52,8 +52,12 @@ export default function WalletPage() {
       return "消费金额不能超过当前快乐预算余额。";
     }
 
+    if (wallet.monthlySpentAmount + amountNumber > userSettings.monthlyBudgetLimit) {
+      return `本月消费已达预算上限（¥${userSettings.monthlyBudgetLimit}），剩余可用 ¥${Math.max(userSettings.monthlyBudgetLimit - wallet.monthlySpentAmount, 0)}。`;
+    }
+
     return null;
-  }, [amount, amountNumber, trimmedNote, wallet.rewardBalance]);
+  }, [amount, amountNumber, trimmedNote, wallet.rewardBalance, wallet.monthlySpentAmount, userSettings.monthlyBudgetLimit]);
 
   useEffect(() => {
     if (!notice) {
@@ -145,7 +149,7 @@ export default function WalletPage() {
           <StatCard
             title="月预算上限"
             value={`¥${userSettings.monthlyBudgetLimit}`}
-            hint="当前仅用于提示，暂不限制奖励入账"
+            hint="消费不能超过此上限"
             tone="teal"
           />
           <StatCard
