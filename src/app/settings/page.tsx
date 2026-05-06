@@ -324,20 +324,16 @@ export default function SettingsPage() {
           <div className="rounded-[24px] border border-[var(--line)] bg-white/70 p-5">
             <p className="text-sm font-medium text-stone-700">系列任务默认设置</p>
             <p className="muted mt-2 text-sm">
-              新建系列任务时的默认周目标和阶段奖励倍率。已有任务不受影响。可以选择预设值，也可以自定义。
+              新建系列任务时的默认周目标和阶段奖励倍率。已有任务不受影响。
             </p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-stone-700">默认每周目标次数</span>
                 <select
-                  value={[1, 2, 3, 4, 5, 6, 7].map(String).includes(seriesWeeklyTarget) ? seriesWeeklyTarget : "custom"}
+                  value={seriesWeeklyTarget}
                   onChange={(event) => {
-                    if (event.target.value !== "custom") {
-                      setSeriesWeeklyTarget(event.target.value);
-                      setActionMessage(null);
-                    } else {
-                      setSeriesWeeklyTarget("");
-                    }
+                    setSeriesWeeklyTarget(event.target.value);
+                    setActionMessage(null);
                   }}
                   className="w-full rounded-2xl border border-[var(--line)] bg-[var(--card-strong)] px-4 py-3 outline-none"
                 >
@@ -346,71 +342,56 @@ export default function SettingsPage() {
                       每周 {n} 次
                     </option>
                   ))}
-                  <option value="custom">自定义...</option>
                 </select>
-                {![1, 2, 3, 4, 5, 6, 7].map(String).includes(seriesWeeklyTarget) ? (
-                  <input
-                    type="number"
-                    min="1"
-                    max="30"
-                    step="1"
-                    value={seriesWeeklyTarget}
-                    onChange={(event) => {
-                      setSeriesWeeklyTarget(event.target.value);
-                      setActionMessage(null);
-                    }}
-                    placeholder="输入次数（1-30）"
-                    className="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
-                  />
-                ) : null}
               </label>
-              <label className="block">
+              <div>
                 <span className="mb-2 block text-sm font-medium text-stone-700">阶段奖励倍率</span>
-                <select
-                  value={["0", "0.3", "0.5", "0.8", "1"].includes(seriesWeeklyBonusMultiplier) ? seriesWeeklyBonusMultiplier : "custom"}
-                  onChange={(event) => {
-                    if (event.target.value !== "custom") {
-                      setSeriesWeeklyBonusMultiplier(event.target.value);
-                      setActionMessage(null);
-                    } else {
-                      setSeriesWeeklyBonusMultiplier("");
-                    }
-                  }}
-                  className="w-full rounded-2xl border border-[var(--line)] bg-[var(--card-strong)] px-4 py-3 outline-none"
-                >
+                <div className="mb-2 flex flex-wrap gap-2">
                   {[
-                    { value: "0", label: "无额外奖励" },
-                    { value: "0.3", label: "0.3 倍" },
-                    { value: "0.5", label: "0.5 倍（默认）" },
-                    { value: "0.8", label: "0.8 倍" },
-                    { value: "1", label: "1 倍" },
+                    { value: "0", label: "无" },
+                    { value: "0.3", label: "0.3" },
+                    { value: "0.5", label: "0.5" },
+                    { value: "0.8", label: "0.8" },
+                    { value: "1", label: "1" },
                   ].map((opt) => (
-                    <option key={opt.value} value={opt.value}>
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        setSeriesWeeklyBonusMultiplier(opt.value);
+                        setActionMessage(null);
+                      }}
+                      className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                        seriesWeeklyBonusMultiplier === opt.value
+                          ? "bg-stone-900 text-white"
+                          : "border border-[var(--line)] bg-white text-stone-700 hover:bg-stone-50"
+                      }`}
+                    >
                       {opt.label}
-                    </option>
+                    </button>
                   ))}
-                  <option value="custom">自定义...</option>
-                </select>
-                {["0", "0.3", "0.5", "0.8", "1"].includes(seriesWeeklyBonusMultiplier) ? null : (
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="shrink-0 text-xs text-stone-500">自定义：</span>
                   <input
                     type="number"
                     min="0"
                     max="5"
                     step="0.1"
-                    value={seriesWeeklyBonusMultiplier}
+                    value={["0", "0.3", "0.5", "0.8", "1"].includes(seriesWeeklyBonusMultiplier) ? "" : seriesWeeklyBonusMultiplier}
                     onChange={(event) => {
                       setSeriesWeeklyBonusMultiplier(event.target.value);
                       setActionMessage(null);
                     }}
-                    placeholder="输入倍率（如 0.5）"
-                    className="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
+                    placeholder="如 0.7"
+                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none"
                   />
-                )}
-              </label>
+                </div>
+              </div>
             </div>
             <div className="mt-3 rounded-[22px] bg-white/65 px-4 py-3 text-sm text-stone-700">
-              示例：难度普通（30 宝石/1 星尘），每周目标 {seriesWeeklyTarget || "?"} 次，倍率 {seriesWeeklyBonusMultiplier || "?"}，
-              阶段奖励 = {seriesWeeklyTarget && seriesWeeklyBonusMultiplier ? Math.round(30 * Number(seriesWeeklyTarget) * Number(seriesWeeklyBonusMultiplier)) : "?"} 宝石 / {seriesWeeklyTarget && seriesWeeklyBonusMultiplier ? Math.round(1 * Number(seriesWeeklyTarget) * Number(seriesWeeklyBonusMultiplier)) : "?"} 星尘
+              示例：难度普通（30 宝石/1 星尘），每周目标 {seriesWeeklyTarget} 次，倍率 {seriesWeeklyBonusMultiplier}，
+              阶段奖励 = {Math.round(30 * Number(seriesWeeklyTarget) * Number(seriesWeeklyBonusMultiplier))} 宝石 / {Math.round(1 * Number(seriesWeeklyTarget) * Number(seriesWeeklyBonusMultiplier))} 星尘
             </div>
           </div>
 

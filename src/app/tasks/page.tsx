@@ -36,6 +36,8 @@ type ManualDraftState = {
     difficulty: TaskDifficulty;
     category: string;
     weeklyTarget: number;
+    customWeeklyTarget: string;
+    isCustomWeeklyTarget: boolean;
   };
   main: {
     title: string;
@@ -50,7 +52,7 @@ type EditingTaskDraft = {
 };
 
 const DEFAULT_MANUAL_DRAFTS: ManualDraftState = {
-  series: { title: "", difficulty: "medium", category: DEFAULT_SERIES_TASK_CATEGORY, weeklyTarget: 3 },
+  series: { title: "", difficulty: "medium", category: DEFAULT_SERIES_TASK_CATEGORY, weeklyTarget: 3, customWeeklyTarget: "", isCustomWeeklyTarget: false },
   main: { title: "", difficulty: "hard" },
 };
 
@@ -150,9 +152,20 @@ export default function TasksPage() {
   }
 
   function handleWeeklyTargetChange(value: string) {
-    const num = parseInt(value, 10);
-    if (Number.isFinite(num) && num >= 1 && num <= 7) {
-      updateSeriesDraft({ weeklyTarget: num });
+    if (value === "custom") {
+      updateSeriesDraft({ isCustomWeeklyTarget: true, customWeeklyTarget: "", weeklyTarget: 0 });
+    } else {
+      const num = parseInt(value, 10);
+      if (Number.isFinite(num) && num >= 1 && num <= 30) {
+        updateSeriesDraft({ weeklyTarget: num, isCustomWeeklyTarget: false, customWeeklyTarget: "" });
+      }
+    }
+  }
+
+  function handleCustomWeeklyTargetConfirm() {
+    const num = parseInt(manualDrafts.series.customWeeklyTarget, 10);
+    if (Number.isFinite(num) && num >= 1 && num <= 30) {
+      updateSeriesDraft({ weeklyTarget: num, isCustomWeeklyTarget: false });
     }
   }
 
@@ -170,12 +183,20 @@ export default function TasksPage() {
     event.preventDefault();
 
     const draft = manualDrafts.series;
+    const effectiveTarget = draft.isCustomWeeklyTarget
+      ? parseInt(draft.customWeeklyTarget, 10)
+      : draft.weeklyTarget;
+
+    if (!Number.isFinite(effectiveTarget) || effectiveTarget < 1 || effectiveTarget > 30) {
+      return;
+    }
+
     const input: TaskCreateInput = {
       title: draft.title.trim(),
       difficulty: draft.difficulty,
       type: "series",
       category: draft.category,
-      weeklyTarget: draft.weeklyTarget,
+      weeklyTarget: effectiveTarget,
     };
 
     if (!input.title) {
@@ -183,8 +204,8 @@ export default function TasksPage() {
     }
 
     addTask(input);
-    updateSeriesDraft({ title: "", category: DEFAULT_SERIES_TASK_CATEGORY });
-    pushNotice("系列任务已创建", `${input.title} 已加入 ${input.category}，每周目标 ${input.weeklyTarget} 次。`);
+    updateSeriesDraft({ title: "", category: DEFAULT_SERIES_TASK_CATEGORY, weeklyTarget: 3, customWeeklyTarget: "", isCustomWeeklyTarget: false });
+    pushNotice("系列任务已创建", `${input.title} 已加入 ${input.category}，每周目标 ${effectiveTarget} 次。`);
   }
 
   function handleMainTaskSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -547,6 +568,10 @@ export default function TasksPage() {
           weeklyTarget={manualDrafts.series.weeklyTarget}
           onWeeklyTargetChange={handleWeeklyTargetChange}
           weeklyBonusLabel={seriesWeeklyBonusLabel}
+          isCustomWeeklyTarget={manualDrafts.series.isCustomWeeklyTarget}
+          customWeeklyTarget={manualDrafts.series.customWeeklyTarget}
+          onCustomWeeklyTargetChange={(value) => updateSeriesDraft({ customWeeklyTarget: value })}
+          onCustomWeeklyTargetConfirm={handleCustomWeeklyTargetConfirm}
         />
 
         <div className="mt-5 space-y-5">
@@ -729,6 +754,10 @@ function TaskComposer(props: {
   weeklyTarget?: number;
   onWeeklyTargetChange?: (value: string) => void;
   weeklyBonusLabel?: string;
+  isCustomWeeklyTarget?: boolean;
+  customWeeklyTarget?: string;
+  onCustomWeeklyTargetChange?: (value: string) => void;
+  onCustomWeeklyTargetConfirm?: () => void;
 }) {
   return (
     <form
@@ -786,14 +815,8 @@ function TaskComposer(props: {
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-stone-700">每周目标次数</span>
             <select
-              value={[1, 2, 3, 4, 5, 6, 7].includes(props.weeklyTarget) ? String(props.weeklyTarget) : "custom"}
-              onChange={(event) => {
-                if (event.target.value !== "custom") {
-                  props.onWeeklyTargetChange?.(event.target.value);
-                } else {
-                  props.onWeeklyTargetChange?.("0");
-                }
-              }}
+              value={props.isCustomWeeklyTarget ? "custom" : String(props.weeklyTarget)}
+              onChange={(event) => props.onWeeklyTargetChange?.(event.target.value)}
               className="w-full rounded-2xl border border-[var(--line)] bg-[var(--card-strong)] px-4 py-3 outline-none"
             >
               {[1, 2, 3, 4, 5, 6, 7].map((n) => (
@@ -803,24 +826,33 @@ function TaskComposer(props: {
               ))}
               <option value="custom">自定义...</option>
             </select>
-            {![1, 2, 3, 4, 5, 6, 7].includes(props.weeklyTarget) ? (
-              <input
-                type="number"
-                min="1"
-                max="30"
-                step="1"
-                value={props.weeklyTarget || ""}
-                onChange={(event) => {
-                  const val = parseInt(event.target.value, 10);
-                  if (Number.isFinite(val) && val >= 1 && val <= 30) {
-                    props.onWeeklyTargetChange?.(String(val));
-                  } else if (event.target.value === "") {
-                    props.onWeeklyTargetChange?.("0");
-                  }
-                }}
-                placeholder="输入次数（1-30）"
-                className="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
-              />
+            {props.isCustomWeeklyTarget ? (
+              <div className="mt-2 flex gap-2">
+                <input
+                  type="number"
+                  min="1"
+                  max="30"
+                  step="1"
+                  value={props.customWeeklyTarget || ""}
+                  onChange={(event) => props.onCustomWeeklyTargetChange?.(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      props.onCustomWeeklyTargetConfirm?.();
+                    }
+                  }}
+                  placeholder="输入次数（1-30）"
+                  className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={props.onCustomWeeklyTargetConfirm}
+                  className="shrink-0 rounded-2xl bg-stone-900 px-4 py-3 text-sm font-medium text-white"
+                >
+                  确认
+                </button>
+              </div>
             ) : null}
           </label>
           <div className="flex items-end">
