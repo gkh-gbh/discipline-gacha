@@ -27,6 +27,8 @@ export type UserSettings = {
   taskRewardSettings: TaskRewardSettings;
   showDevTools: boolean;
   enablePity: boolean;
+  seriesWeeklyTarget: number;
+  seriesWeeklyBonusMultiplier: number;
   timezone: string;
   createdAt: string;
   updatedAt: string;

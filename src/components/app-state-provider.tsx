@@ -44,6 +44,8 @@ type UserSettingsFormInput = Pick<
   | "taskRewardSettings"
   | "showDevTools"
   | "enablePity"
+  | "seriesWeeklyTarget"
+  | "seriesWeeklyBonusMultiplier"
 >;
 
 type AppStateContextValue = {

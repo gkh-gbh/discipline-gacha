@@ -50,6 +50,8 @@ type UserSettingsUpdateInput = Pick<
   | "taskRewardSettings"
   | "showDevTools"
   | "enablePity"
+  | "seriesWeeklyTarget"
+  | "seriesWeeklyBonusMultiplier"
 >;
 
 const EMPTY_DEBUG_STATE: AppDebugState = {
@@ -147,6 +149,8 @@ export function createUserSettingsTemplate(date = new Date()): UserSettings {
     taskRewardSettings: normalizeTaskRewardSettings(DEFAULT_TASK_REWARD_SETTINGS),
     showDevTools: true,
     enablePity: true,
+    seriesWeeklyTarget: DEFAULT_SERIES_WEEKLY_TARGET,
+    seriesWeeklyBonusMultiplier: SERIES_WEEKLY_BONUS_MULTIPLIER,
     timezone: getDefaultTimezone(),
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -425,6 +429,14 @@ function normalizeUserSettings(candidate: unknown): UserSettings {
       typeof candidate.showDevTools === "boolean" ? candidate.showDevTools : true,
     enablePity:
       typeof candidate.enablePity === "boolean" ? candidate.enablePity : defaults.enablePity,
+    seriesWeeklyTarget:
+      typeof candidate.seriesWeeklyTarget === "number" && candidate.seriesWeeklyTarget >= 1 && candidate.seriesWeeklyTarget <= 7
+        ? Math.round(candidate.seriesWeeklyTarget)
+        : defaults.seriesWeeklyTarget,
+    seriesWeeklyBonusMultiplier:
+      typeof candidate.seriesWeeklyBonusMultiplier === "number" && candidate.seriesWeeklyBonusMultiplier >= 0
+        ? candidate.seriesWeeklyBonusMultiplier
+        : defaults.seriesWeeklyBonusMultiplier,
     timezone: typeof candidate.timezone === "string" ? candidate.timezone : defaults.timezone,
     createdAt:
       typeof candidate.createdAt === "string" ? candidate.createdAt : defaults.createdAt,
@@ -613,6 +625,14 @@ export function updateUserSettings(
   );
   const showDevTools = input.showDevTools === true;
   const enablePity = input.enablePity !== false;
+  const seriesWeeklyTarget = normalizePositiveNumber(
+    input.seriesWeeklyTarget,
+    baseState.userSettings.seriesWeeklyTarget,
+  );
+  const seriesWeeklyBonusMultiplier = normalizePositiveNumber(
+    input.seriesWeeklyBonusMultiplier,
+    baseState.userSettings.seriesWeeklyBonusMultiplier,
+  );
   const timestamp = createTimestamp(now);
 
   const nextState: AppState = {
@@ -625,6 +645,8 @@ export function updateUserSettings(
       taskRewardSettings,
       showDevTools,
       enablePity,
+      seriesWeeklyTarget,
+      seriesWeeklyBonusMultiplier,
       updatedAt: timestamp,
     },
   };
@@ -687,9 +709,11 @@ export function addTask(input: TaskCreateInput, baseState = loadAppState()) {
   );
   const now = new Date();
   const isSeries = input.type === "series";
-  const weeklyTarget = isSeries ? (input.weeklyTarget && input.weeklyTarget > 0 ? input.weeklyTarget : DEFAULT_SERIES_WEEKLY_TARGET) : undefined;
-  const weeklyBonusGems = isSeries ? Math.round(rewards.rewardGems * weeklyTarget! * SERIES_WEEKLY_BONUS_MULTIPLIER) : undefined;
-  const weeklyBonusDust = isSeries ? Math.round(rewards.rewardDust * weeklyTarget! * SERIES_WEEKLY_BONUS_MULTIPLIER) : undefined;
+  const defaultWeeklyTarget = baseState.userSettings.seriesWeeklyTarget;
+  const bonusMultiplier = baseState.userSettings.seriesWeeklyBonusMultiplier;
+  const weeklyTarget = isSeries ? (input.weeklyTarget && input.weeklyTarget > 0 ? input.weeklyTarget : defaultWeeklyTarget) : undefined;
+  const weeklyBonusGems = isSeries ? Math.round(rewards.rewardGems * weeklyTarget! * bonusMultiplier) : undefined;
+  const weeklyBonusDust = isSeries ? Math.round(rewards.rewardDust * weeklyTarget! * bonusMultiplier) : undefined;
 
   const nextState: AppState = {
     ...baseState,

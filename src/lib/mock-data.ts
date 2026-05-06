@@ -56,6 +56,8 @@ export const settings: UserSettings = {
   },
   showDevTools: true,
   enablePity: true,
+  seriesWeeklyTarget: 3,
+  seriesWeeklyBonusMultiplier: 0.5,
   timezone: "Asia/Shanghai",
   createdAt: "2026-04-30T09:00:00+08:00",
   updatedAt: "2026-04-30T09:00:00+08:00",

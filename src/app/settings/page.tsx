@@ -61,6 +61,8 @@ export default function SettingsPage() {
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [showDevTools, setShowDevTools] = useState(true);
   const [enablePity, setEnablePity] = useState(true);
+  const [seriesWeeklyTarget, setSeriesWeeklyTarget] = useState("3");
+  const [seriesWeeklyBonusMultiplier, setSeriesWeeklyBonusMultiplier] = useState("0.5");
   const [rewardDraft, setRewardDraft] = useState<RewardDraftState>(
     createRewardDraft(appState.userSettings.taskRewardSettings),
   );
@@ -78,6 +80,8 @@ export default function SettingsPage() {
     setSelectedDays(appState.userSettings.gachaOpenDays);
     setShowDevTools(appState.userSettings.showDevTools);
     setEnablePity(appState.userSettings.enablePity);
+    setSeriesWeeklyTarget(String(appState.userSettings.seriesWeeklyTarget));
+    setSeriesWeeklyBonusMultiplier(String(appState.userSettings.seriesWeeklyBonusMultiplier));
     setRewardDraft(createRewardDraft(appState.userSettings.taskRewardSettings));
   }, [appState.userSettings, isHydrated]);
 
@@ -153,6 +157,8 @@ export default function SettingsPage() {
       taskRewardSettings: parsedRewardDraft.settings,
       showDevTools,
       enablePity,
+      seriesWeeklyTarget: Number(seriesWeeklyTarget),
+      seriesWeeklyBonusMultiplier: Number(seriesWeeklyBonusMultiplier),
     });
     setActionMessage("设置已保存到本地。");
   }
@@ -173,6 +179,45 @@ export default function SettingsPage() {
   function handleAddDevGems() {
     addDevGems(500);
     setActionMessage("已增加 500 宝石。");
+  }
+
+  function handleExportData() {
+    const data = localStorage.getItem("discipline-gacha-state");
+    if (!data) {
+      setActionMessage("没有可导出的数据。");
+      return;
+    }
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `discipline-gacha-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setActionMessage("数据已导出为 JSON 文件。");
+  }
+
+  function handleImportData() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result as string;
+          JSON.parse(text);
+          localStorage.setItem("discipline-gacha-state", text);
+          window.location.reload();
+        } catch {
+          setActionMessage("导入失败：文件格式不正确。");
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
   }
 
   const remainingMonthlyBudget = Math.max(
@@ -265,6 +310,59 @@ export default function SettingsPage() {
           />
 
           <div className="rounded-[24px] border border-[var(--line)] bg-white/70 p-5">
+            <p className="text-sm font-medium text-stone-700">系列任务默认设置</p>
+            <p className="muted mt-2 text-sm">
+              新建系列任务时的默认周目标和阶段奖励倍率。已有任务不受影响。
+            </p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-stone-700">默认每周目标次数</span>
+                <select
+                  value={seriesWeeklyTarget}
+                  onChange={(event) => {
+                    setSeriesWeeklyTarget(event.target.value);
+                    setActionMessage(null);
+                  }}
+                  className="w-full rounded-2xl border border-[var(--line)] bg-[var(--card-strong)] px-4 py-3 outline-none"
+                >
+                  {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                    <option key={n} value={n}>
+                      每周 {n} 次
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-stone-700">阶段奖励倍率</span>
+                <select
+                  value={seriesWeeklyBonusMultiplier}
+                  onChange={(event) => {
+                    setSeriesWeeklyBonusMultiplier(event.target.value);
+                    setActionMessage(null);
+                  }}
+                  className="w-full rounded-2xl border border-[var(--line)] bg-[var(--card-strong)] px-4 py-3 outline-none"
+                >
+                  {[
+                    { value: "0", label: "无额外奖励" },
+                    { value: "0.3", label: "0.3 倍" },
+                    { value: "0.5", label: "0.5 倍（默认）" },
+                    { value: "0.8", label: "0.8 倍" },
+                    { value: "1", label: "1 倍" },
+                  ].map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="mt-3 rounded-[22px] bg-white/65 px-4 py-3 text-sm text-stone-700">
+              示例：难度普通（30 宝石/1 星尘），每周目标 {seriesWeeklyTarget} 次，倍率 {seriesWeeklyBonusMultiplier}，
+              阶段奖励 = {Math.round(30 * Number(seriesWeeklyTarget) * Number(seriesWeeklyBonusMultiplier))} 宝石 / {Math.round(1 * Number(seriesWeeklyTarget) * Number(seriesWeeklyBonusMultiplier))} 星尘
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-[var(--line)] bg-white/70 p-5">
             <p className="text-sm font-medium text-stone-700">任务奖励设置</p>
             <p className="muted mt-2 text-sm">
               修改后只影响未来新建任务和新建每日模板，已有任务和模板会保留原奖励。
@@ -344,7 +442,7 @@ export default function SettingsPage() {
         <SectionCard
           eyebrow="Tools"
           title="测试与重置"
-          description="重置会清空当前浏览器中的本地状态。"
+          description="重置会清空当前浏览器中的本地状态。导出/导入用于备份和迁移数据。"
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <button
@@ -368,6 +466,22 @@ export default function SettingsPage() {
                 当前未显示开发测试工具。
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={handleExportData}
+              className="rounded-2xl border border-[var(--line)] bg-white px-5 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+            >
+              导出数据 (JSON)
+            </button>
+
+            <button
+              type="button"
+              onClick={handleImportData}
+              className="rounded-2xl border border-[var(--line)] bg-white px-5 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+            >
+              导入数据 (JSON)
+            </button>
           </div>
         </SectionCard>
       </div>
