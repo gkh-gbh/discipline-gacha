@@ -101,6 +101,14 @@ function getLocalMonthKey(date: Date) {
   return `${date.getFullYear()}-${padNumber(date.getMonth() + 1)}`;
 }
 
+export function getWeekStartKey(date: Date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? 6 : day - 1;
+  d.setDate(d.getDate() - diff);
+  return getLocalDateKey(d);
+}
+
 function createTimestamp(date = new Date()) {
   return date.toISOString();
 }
@@ -207,6 +215,11 @@ function normalizeTask(candidate: unknown): Task | null {
     completedAt: typeof candidate.completedAt === "string" ? candidate.completedAt : undefined,
     description: typeof candidate.description === "string" ? candidate.description : undefined,
     dueDate: typeof candidate.dueDate === "string" ? candidate.dueDate : undefined,
+    weeklyTarget: type === "series" && typeof candidate.weeklyTarget === "number" ? candidate.weeklyTarget : undefined,
+    weeklyCompletedCount: type === "series" && typeof candidate.weeklyCompletedCount === "number" ? candidate.weeklyCompletedCount : undefined,
+    weekPeriodStart: type === "series" && typeof candidate.weekPeriodStart === "string" ? candidate.weekPeriodStart : undefined,
+    weeklyBonusGems: type === "series" && typeof candidate.weeklyBonusGems === "number" ? candidate.weeklyBonusGems : undefined,
+    weeklyBonusDust: type === "series" && typeof candidate.weeklyBonusDust === "number" ? candidate.weeklyBonusDust : undefined,
   };
 }
 
@@ -670,6 +683,12 @@ export function addTask(input: TaskCreateInput, baseState = loadAppState()) {
     input.difficulty,
     baseState.userSettings.taskRewardSettings,
   );
+  const now = new Date();
+  const isSeries = input.type === "series";
+  const weeklyTarget = isSeries ? (input.weeklyTarget && input.weeklyTarget > 0 ? input.weeklyTarget : 3) : undefined;
+  const weeklyBonusGems = isSeries ? Math.round(rewards.rewardGems * weeklyTarget! * 0.5) : undefined;
+  const weeklyBonusDust = isSeries ? Math.round(rewards.rewardDust * weeklyTarget! * 0.5) : undefined;
+
   const nextState: AppState = {
     ...baseState,
     tasks: [
@@ -687,6 +706,11 @@ export function addTask(input: TaskCreateInput, baseState = loadAppState()) {
         rewardDust: rewards.rewardDust,
         createdAt: timestamp,
         updatedAt: timestamp,
+        weeklyTarget,
+        weeklyCompletedCount: isSeries ? 0 : undefined,
+        weekPeriodStart: isSeries ? getWeekStartKey(now) : undefined,
+        weeklyBonusGems,
+        weeklyBonusDust,
       },
       ...baseState.tasks,
     ],
@@ -921,7 +945,15 @@ export function deleteDailyTaskTemplate(templateId: string, baseState = loadAppS
 export function completeTask(taskId: string, baseState = loadAppState()) {
   const targetTask = baseState.tasks.find((task) => task.id === taskId);
 
-  if (!targetTask || targetTask.status === "completed" || targetTask.status === "archived") {
+  if (!targetTask || targetTask.status === "archived") {
+    return baseState;
+  }
+
+  if (targetTask.type === "series") {
+    return completeSeriesTask(targetTask, baseState);
+  }
+
+  if (targetTask.status === "completed") {
     return baseState;
   }
 
@@ -957,6 +989,70 @@ export function completeTask(taskId: string, baseState = loadAppState()) {
       },
       ...baseState.resourceTransactions,
     ],
+  };
+
+  saveAppState(nextState);
+  return nextState;
+}
+
+function completeSeriesTask(targetTask: Task, baseState: AppState) {
+  const now = new Date();
+  const timestamp = createTimestamp(now);
+  const currentWeekStart = getWeekStartKey(now);
+  const weekStart = targetTask.weekPeriodStart || currentWeekStart;
+  const needsWeekReset = weekStart !== currentWeekStart;
+  const currentCount = needsWeekReset ? 0 : (targetTask.weeklyCompletedCount || 0);
+  const weeklyTarget = targetTask.weeklyTarget || 3;
+  const newCount = currentCount + 1;
+  const targetReached = newCount >= weeklyTarget && (needsWeekReset || (targetTask.weeklyCompletedCount || 0) < weeklyTarget);
+  const bonusGems = targetReached ? (targetTask.weeklyBonusGems || 0) : 0;
+  const bonusDust = targetReached ? (targetTask.weeklyBonusDust || 0) : 0;
+
+  const syncedWallet = syncWalletMonth(baseState.wallet, now);
+  const updatedTask: Task = {
+    ...targetTask,
+    weeklyCompletedCount: newCount,
+    weekPeriodStart: currentWeekStart,
+    updatedAt: timestamp,
+  };
+
+  const transactions: ResourceTransaction[] = [
+    {
+      id: createId("txn"),
+      type: "task_reward",
+      gemsDelta: targetTask.rewardGems,
+      dustDelta: targetTask.rewardDust,
+      rewardBalanceDelta: 0,
+      relatedTaskId: targetTask.id,
+      note: `完成系列任务：${targetTask.title}（本周第 ${newCount}/${weeklyTarget} 次）`,
+      createdAt: timestamp,
+    },
+  ];
+
+  if (targetReached) {
+    transactions.push({
+      id: createId("txn"),
+      type: "series_bonus",
+      gemsDelta: bonusGems,
+      dustDelta: bonusDust,
+      rewardBalanceDelta: 0,
+      relatedTaskId: targetTask.id,
+      note: `周目标达成：${targetTask.title}（${newCount}/${weeklyTarget}），额外奖励`,
+      createdAt: timestamp,
+    });
+  }
+
+  const nextState: AppState = {
+    ...baseState,
+    tasks: baseState.tasks.map((task) => (task.id === targetTask.id ? updatedTask : task)),
+    wallet: {
+      ...syncedWallet,
+      gems: syncedWallet.gems + targetTask.rewardGems + bonusGems,
+      dust: syncedWallet.dust + targetTask.rewardDust + bonusDust,
+      updatedAt: timestamp,
+      month: syncedWallet.month || getLocalMonthKey(now),
+    },
+    resourceTransactions: [...transactions, ...baseState.resourceTransactions],
   };
 
   saveAppState(nextState);

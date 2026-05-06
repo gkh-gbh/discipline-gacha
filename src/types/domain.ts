@@ -48,6 +48,11 @@ export type Task = {
   completedAt?: string;
   createdAt: string;
   updatedAt: string;
+  weeklyTarget?: number;
+  weeklyCompletedCount?: number;
+  weekPeriodStart?: string;
+  weeklyBonusGems?: number;
+  weeklyBonusDust?: number;
 };
 
 export type DailyTaskTemplate = {
@@ -191,6 +196,7 @@ export type TaskCreateInput = {
   difficulty: TaskDifficulty;
   type: TaskType;
   category?: string;
+  weeklyTarget?: number;
 };
 
 export type DailyTaskTemplateCreateInput = {

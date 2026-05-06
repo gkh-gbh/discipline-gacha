@@ -196,6 +196,11 @@ export function TaskPreviewList(props: {
                           {getSeriesTaskCategoryLabel(item.category)}
                         </span>
                       ) : null}
+                      {item.type === "series" && item.weeklyTarget ? (
+                        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">
+                          本周 {item.weeklyCompletedCount || 0}/{item.weeklyTarget}
+                        </span>
+                      ) : null}
                       {item.date ? (
                         <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
                           {item.date}

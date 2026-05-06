@@ -42,11 +42,25 @@ export default function HomePage() {
       return;
     }
 
+    const prevCount = task.weeklyCompletedCount || 0;
     completeTask(taskId);
-    setNotice({
-      title: "任务完成",
-      body: `${task.title} 已结算，获得 +${task.rewardGems} 宝石 / +${task.rewardDust} 星尘。`,
-    });
+
+    if (task.type === "series" && task.weeklyTarget) {
+      const newCount = prevCount + 1;
+      const targetReached = newCount >= task.weeklyTarget && prevCount < task.weeklyTarget;
+      const bonusText = targetReached
+        ? ` 周目标达成！额外 +${task.weeklyBonusGems || 0} 宝石 / +${task.weeklyBonusDust || 0} 星尘。`
+        : "";
+      setNotice({
+        title: targetReached ? "周目标达成！" : "任务完成",
+        body: `${task.title} 本周第 ${newCount}/${task.weeklyTarget} 次，获得 +${task.rewardGems} 宝石 / +${task.rewardDust} 星尘。${bonusText}`,
+      });
+    } else {
+      setNotice({
+        title: "任务完成",
+        body: `${task.title} 已结算，获得 +${task.rewardGems} 宝石 / +${task.rewardDust} 星尘。`,
+      });
+    }
   }
 
   return (

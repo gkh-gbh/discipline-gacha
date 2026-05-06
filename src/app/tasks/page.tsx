@@ -36,6 +36,7 @@ type ManualDraftState = {
     title: string;
     difficulty: TaskDifficulty;
     category: string;
+    weeklyTarget: number;
   };
   main: {
     title: string;
@@ -50,7 +51,7 @@ type EditingTaskDraft = {
 };
 
 const DEFAULT_MANUAL_DRAFTS: ManualDraftState = {
-  series: { title: "", difficulty: "medium", category: DEFAULT_SERIES_TASK_CATEGORY },
+  series: { title: "", difficulty: "medium", category: DEFAULT_SERIES_TASK_CATEGORY, weeklyTarget: 3 },
   main: { title: "", difficulty: "hard" },
 };
 
@@ -150,6 +151,13 @@ export default function TasksPage() {
     }));
   }
 
+  function handleWeeklyTargetChange(value: string) {
+    const num = parseInt(value, 10);
+    if (Number.isFinite(num) && num >= 1 && num <= 7) {
+      updateSeriesDraft({ weeklyTarget: num });
+    }
+  }
+
   function updateMainDraft(patch: Partial<ManualDraftState["main"]>) {
     setManualDrafts((current) => ({
       ...current,
@@ -169,6 +177,7 @@ export default function TasksPage() {
       difficulty: draft.difficulty,
       type: "series",
       category: draft.category,
+      weeklyTarget: draft.weeklyTarget,
     };
 
     if (!input.title) {
@@ -177,7 +186,7 @@ export default function TasksPage() {
 
     addTask(input);
     updateSeriesDraft({ title: "", category: DEFAULT_SERIES_TASK_CATEGORY });
-    pushNotice("系列任务已创建", `${input.title} 已加入 ${input.category}。`);
+    pushNotice("系列任务已创建", `${input.title} 已加入 ${input.category}，每周目标 ${input.weeklyTarget} 次。`);
   }
 
   function handleMainTaskSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -206,11 +215,25 @@ export default function TasksPage() {
       return;
     }
 
+    const prevCount = task.weeklyCompletedCount || 0;
     completeTask(taskId);
-    pushNotice(
-      "任务完成",
-      `${task.title} 已结算，获得 +${task.rewardGems} 宝石 / +${task.rewardDust} 星尘。`,
-    );
+
+    if (task.type === "series" && task.weeklyTarget) {
+      const newCount = prevCount + 1;
+      const targetReached = newCount >= task.weeklyTarget && prevCount < task.weeklyTarget;
+      const bonusText = targetReached
+        ? ` 周目标达成！额外 +${task.weeklyBonusGems || 0} 宝石 / +${task.weeklyBonusDust || 0} 星尘。`
+        : "";
+      pushNotice(
+        targetReached ? "周目标达成！" : "任务完成",
+        `${task.title} 本周第 ${newCount}/${task.weeklyTarget} 次，获得 +${task.rewardGems} 宝石 / +${task.rewardDust} 星尘。${bonusText}`,
+      );
+    } else {
+      pushNotice(
+        "任务完成",
+        `${task.title} 已结算，获得 +${task.rewardGems} 宝石 / +${task.rewardDust} 星尘。`,
+      );
+    }
   }
 
   function startTemplateEdit(template: DailyTaskTemplate) {
@@ -545,6 +568,8 @@ export default function TasksPage() {
           actionLabel="添加系列任务"
           category={manualDrafts.series.category}
           onCategoryChange={(value) => updateSeriesDraft({ category: value })}
+          weeklyTarget={manualDrafts.series.weeklyTarget}
+          onWeeklyTargetChange={handleWeeklyTargetChange}
         />
 
         <div className="mt-5 space-y-5">
@@ -724,6 +749,8 @@ function TaskComposer(props: {
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   category?: string;
   onCategoryChange?: (value: string) => void;
+  weeklyTarget?: number;
+  onWeeklyTargetChange?: (value: string) => void;
 }) {
   return (
     <form
@@ -776,10 +803,36 @@ function TaskComposer(props: {
         </button>
       </div>
 
+      {props.weeklyTarget !== undefined && props.onWeeklyTargetChange ? (
+        <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr]">
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-stone-700">每周目标次数</span>
+            <select
+              value={props.weeklyTarget}
+              onChange={(event) => props.onWeeklyTargetChange?.(event.target.value)}
+              className="w-full rounded-2xl border border-[var(--line)] bg-[var(--card-strong)] px-4 py-3 outline-none"
+            >
+              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                <option key={n} value={n}>
+                  每周 {n} 次
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex items-end">
+            <div className="rounded-[22px] bg-white/65 px-4 py-3 text-sm text-stone-700">
+              <p className="font-medium">阶段奖励</p>
+              <p className="muted mt-1">达成目标后额外获得周奖励</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="mt-4 rounded-[22px] bg-white/65 px-4 py-4 text-sm text-stone-700">
         <p className="font-medium">
           当前选择：{difficultyMeta[props.difficulty].label}
           {props.category ? ` / ${props.category}` : ""}
+          {props.weeklyTarget !== undefined ? ` / 每周 ${props.weeklyTarget} 次` : ""}
         </p>
         <p className="muted mt-1">奖励：{props.rewardLabel}</p>
       </div>
@@ -941,6 +994,11 @@ function ManagedTaskList(props: {
                       <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
                         +{task.rewardGems} 宝石 / +{task.rewardDust} 星尘
                       </span>
+                      {task.type === "series" && task.weeklyTarget ? (
+                        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">
+                          本周 {task.weeklyCompletedCount || 0}/{task.weeklyTarget}
+                        </span>
+                      ) : null}
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-medium ${
                           isArchived
