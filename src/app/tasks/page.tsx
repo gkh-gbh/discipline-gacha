@@ -3,12 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useAppState } from "@/components/app-state-provider";
-import { FloatingNotice, PlaceholderNote, SectionCard, TaskPreviewList } from "@/components/ui";
+import { FloatingNotice, PlaceholderNote, SectionCard } from "@/components/ui";
 import {
   getArchivedTasksByType,
   getCompletedTasksByType,
   getSeriesTaskGroups,
-  getTodayDailyTasks,
 } from "@/lib/app-state";
 import {
   difficultyMeta,
@@ -85,9 +84,6 @@ export default function TasksPage() {
   } | null>(null);
 
   const rewardSettings = getTaskRewardSettingsFromUserSettings(appState.userSettings);
-  const todayDailyTasks = getTodayDailyTasks(appState);
-  const todayDailyActiveTasks = todayDailyTasks.filter((task) => task.status === "active");
-  const todayDailyCompletedTasks = todayDailyTasks.filter((task) => task.status === "completed");
   const allDailyTemplates = appState.dailyTaskTemplates;
   const seriesTaskGroups = getSeriesTaskGroups(appState);
   const archivedSeriesTasks = getArchivedTasksByType(appState, "series");
@@ -527,28 +523,6 @@ export default function TasksPage() {
               })}
             </div>
           </div>
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        eyebrow={taskTypeMeta.daily.eyebrow}
-        title="今天自动发布的每日任务"
-        description={`当前有 ${allDailyTemplates.filter((template) => template.isActive).length} 个启用模板，今天已发布 ${todayDailyTasks.length} 条每日任务实例。`}
-      >
-        <div className="grid gap-6 xl:grid-cols-2">
-          <TaskPreviewList
-            title="每日任务 · 进行中"
-            subtitle="日常执行仍然可以在这里完成，但维护入口只保留在模板列表。"
-            items={todayDailyActiveTasks}
-            emptyMessage={taskTypeMeta.daily.activeEmptyMessage}
-            onComplete={handleComplete}
-          />
-          <TaskPreviewList
-            title="每日任务 · 已完成"
-            subtitle="已生成的实例会保留，不因为模板停用或删除而消失。"
-            items={todayDailyCompletedTasks}
-            emptyMessage={taskTypeMeta.daily.completedEmptyMessage}
-          />
         </div>
       </SectionCard>
 
