@@ -819,11 +819,18 @@ function TaskComposer(props: {
               onChange={(event) => props.onWeeklyTargetChange?.(event.target.value)}
               className="w-full rounded-2xl border border-[var(--line)] bg-[var(--card-strong)] px-4 py-3 outline-none"
             >
-              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                <option key={n} value={n}>
-                  每周 {n} 次
-                </option>
-              ))}
+              {(() => {
+                const presets = [1, 2, 3, 4, 5, 6, 7];
+                const current = props.isCustomWeeklyTarget ? null : props.weeklyTarget;
+                const options = current && !presets.includes(current)
+                  ? [...presets, current].sort((a, b) => a - b)
+                  : presets;
+                return options.map((n) => (
+                  <option key={n} value={n}>
+                    每周 {n} 次{!presets.includes(n) ? "（自定义）" : ""}
+                  </option>
+                ));
+              })()}
               <option value="custom">自定义...</option>
             </select>
             {props.isCustomWeeklyTarget ? (
