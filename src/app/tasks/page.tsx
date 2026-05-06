@@ -105,6 +105,8 @@ export default function TasksPage() {
 
   const dailyRewardLabel = getRewardPreviewLabel(dailyTemplateDifficulty, rewardSettings);
   const seriesRewardLabel = getRewardPreviewLabel(manualDrafts.series.difficulty, rewardSettings);
+  const seriesReward = rewardSettings[manualDrafts.series.difficulty];
+  const seriesWeeklyBonusLabel = `每周完成 ${manualDrafts.series.weeklyTarget} 次，额外获得 ${Math.round(seriesReward.gems * manualDrafts.series.weeklyTarget * 0.5)} 宝石 / ${Math.round(seriesReward.dust * manualDrafts.series.weeklyTarget * 0.5)} 星尘`;
   const mainRewardLabel = getRewardPreviewLabel(manualDrafts.main.difficulty, rewardSettings);
 
   const editingRewardLabel = useMemo(() => {
@@ -529,7 +531,7 @@ export default function TasksPage() {
       <SectionCard
         eyebrow={taskTypeMeta.series.eyebrow}
         title={taskTypeMeta.series.label}
-        description="系列任务支持编辑标题、难度、分类，也可以归档或删除。"
+        description="系列任务适合长期坚持的习惯。设置每周目标次数，完成后可重复执行，达成周目标会获得额外阶段奖励。每周一自动重置进度。"
       >
         <TaskComposer
           title={manualDrafts.series.title}
@@ -544,6 +546,7 @@ export default function TasksPage() {
           onCategoryChange={(value) => updateSeriesDraft({ category: value })}
           weeklyTarget={manualDrafts.series.weeklyTarget}
           onWeeklyTargetChange={handleWeeklyTargetChange}
+          weeklyBonusLabel={seriesWeeklyBonusLabel}
         />
 
         <div className="mt-5 space-y-5">
@@ -557,7 +560,7 @@ export default function TasksPage() {
             <ManagedTaskList
               key={group.category}
               title={group.category}
-              subtitle="同一分类下会同时显示进行中和已完成任务。"
+              subtitle="系列任务可重复完成，达成周目标获得阶段奖励。每周一重置。"
               tasks={group.items}
               emptyMessage={taskTypeMeta.series.emptyMessage}
               editingTaskId={editingTaskId}
@@ -725,6 +728,7 @@ function TaskComposer(props: {
   onCategoryChange?: (value: string) => void;
   weeklyTarget?: number;
   onWeeklyTargetChange?: (value: string) => void;
+  weeklyBonusLabel?: string;
 }) {
   return (
     <form
@@ -796,7 +800,7 @@ function TaskComposer(props: {
           <div className="flex items-end">
             <div className="rounded-[22px] bg-white/65 px-4 py-3 text-sm text-stone-700">
               <p className="font-medium">阶段奖励</p>
-              <p className="muted mt-1">达成目标后额外获得周奖励</p>
+              <p className="muted mt-1">{props.weeklyBonusLabel || "达成目标后额外获得周奖励"}</p>
             </div>
           </div>
         </div>

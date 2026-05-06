@@ -11,7 +11,9 @@ import {
 } from "@/lib/gacha";
 import {
   DEFAULT_SERIES_TASK_CATEGORY,
+  DEFAULT_SERIES_WEEKLY_TARGET,
   getSeriesTaskCategoryLabel,
+  SERIES_WEEKLY_BONUS_MULTIPLIER,
   TASK_TYPE_ORDER,
 } from "@/lib/task-types";
 import { formatDustRedeemNote, getDustRedeemOption } from "@/lib/redeem";
@@ -685,9 +687,9 @@ export function addTask(input: TaskCreateInput, baseState = loadAppState()) {
   );
   const now = new Date();
   const isSeries = input.type === "series";
-  const weeklyTarget = isSeries ? (input.weeklyTarget && input.weeklyTarget > 0 ? input.weeklyTarget : 3) : undefined;
-  const weeklyBonusGems = isSeries ? Math.round(rewards.rewardGems * weeklyTarget! * 0.5) : undefined;
-  const weeklyBonusDust = isSeries ? Math.round(rewards.rewardDust * weeklyTarget! * 0.5) : undefined;
+  const weeklyTarget = isSeries ? (input.weeklyTarget && input.weeklyTarget > 0 ? input.weeklyTarget : DEFAULT_SERIES_WEEKLY_TARGET) : undefined;
+  const weeklyBonusGems = isSeries ? Math.round(rewards.rewardGems * weeklyTarget! * SERIES_WEEKLY_BONUS_MULTIPLIER) : undefined;
+  const weeklyBonusDust = isSeries ? Math.round(rewards.rewardDust * weeklyTarget! * SERIES_WEEKLY_BONUS_MULTIPLIER) : undefined;
 
   const nextState: AppState = {
     ...baseState,
@@ -1002,7 +1004,7 @@ function completeSeriesTask(targetTask: Task, baseState: AppState) {
   const weekStart = targetTask.weekPeriodStart || currentWeekStart;
   const needsWeekReset = weekStart !== currentWeekStart;
   const currentCount = needsWeekReset ? 0 : (targetTask.weeklyCompletedCount || 0);
-  const weeklyTarget = targetTask.weeklyTarget || 3;
+  const weeklyTarget = targetTask.weeklyTarget || DEFAULT_SERIES_WEEKLY_TARGET;
   const newCount = currentCount + 1;
   const targetReached = newCount >= weeklyTarget && (needsWeekReset || (targetTask.weeklyCompletedCount || 0) < weeklyTarget);
   const bonusGems = targetReached ? (targetTask.weeklyBonusGems || 0) : 0;

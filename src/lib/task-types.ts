@@ -14,6 +14,9 @@ export const SERIES_TASK_CATEGORY_OPTIONS = [
 export const DEFAULT_SERIES_TASK_CATEGORY = "生活";
 export const FALLBACK_SERIES_TASK_CATEGORY = "其他";
 
+export const DEFAULT_SERIES_WEEKLY_TARGET = 3;
+export const SERIES_WEEKLY_BONUS_MULTIPLIER = 0.5;
+
 export function isSeriesTaskCategory(value: string): value is (typeof SERIES_TASK_CATEGORY_OPTIONS)[number] {
   return SERIES_TASK_CATEGORY_OPTIONS.includes(value as (typeof SERIES_TASK_CATEGORY_OPTIONS)[number]);
 }
