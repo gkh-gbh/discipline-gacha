@@ -1,4 +1,4 @@
-import { getLocalDateKey } from "@/lib/storage";
+import { getLocalDateKey, getWeekStartKey } from "@/lib/storage";
 import { getRemainingPullsUntilSrPity, SR_PITY_THRESHOLD } from "@/lib/gacha";
 import { groupSeriesTasksByCategory, TASK_TYPE_ORDER } from "@/lib/task-types";
 import type { AppState, DailyTaskTemplate, Task, TaskType } from "@/types/domain";
@@ -133,5 +133,58 @@ export function getDashboardStats(state: AppState) {
     mainTasks: getVisibleTasksByType(state, "main"),
     seriesTaskGroups: getSeriesTaskGroups(state),
     latestGachaPull: getLatestGachaPull(state),
+  };
+}
+
+export function getStatsPageData(state: AppState) {
+  const todayKey = getTodayKey();
+  const weekStart = getWeekStartKey(new Date());
+
+  const todayCompleted = state.tasks.filter(
+    (t) => t.status === "completed" && t.completedAt && getLocalDateKey(new Date(t.completedAt)) === todayKey,
+  ).length;
+
+  const weekTransactions = state.resourceTransactions.filter(
+    (t) => getLocalDateKey(new Date(t.createdAt)) >= weekStart,
+  );
+  const weekGems = weekTransactions.reduce((sum, t) => sum + t.gemsDelta, 0);
+  const weekDust = weekTransactions.reduce((sum, t) => sum + t.dustDelta, 0);
+
+  const weekPulls = state.gachaPulls.filter(
+    (p) => getLocalDateKey(new Date(p.createdAt)) >= weekStart,
+  ).length;
+
+  const totalCompleted = state.tasks.filter((t) => t.status === "completed").length;
+  const totalTasks = state.tasks.filter((t) => t.status !== "archived").length;
+
+  const seriesProgress = state.tasks
+    .filter((t) => t.type === "series" && t.status === "active" && t.weeklyTarget)
+    .map((t) => ({
+      title: t.title,
+      completed: t.weeklyCompletedCount || 0,
+      target: t.weeklyTarget || 0,
+      reached: (t.weeklyCompletedCount || 0) >= (t.weeklyTarget || 0),
+    }));
+
+  const mainCompleted = state.tasks.filter(
+    (t) => t.type === "main" && t.status === "completed",
+  ).length;
+  const mainTotal = state.tasks.filter((t) => t.type === "main").length;
+
+  const totalUnlocked = state.wallet.monthlyUnlockedAmount;
+  const totalSpent = state.spendingRecords.reduce((sum, r) => sum + r.amount, 0);
+
+  return {
+    todayCompleted,
+    weekGems,
+    weekDust,
+    weekPulls,
+    totalCompleted,
+    totalTasks,
+    seriesProgress,
+    mainCompleted,
+    mainTotal,
+    totalUnlocked,
+    totalSpent,
   };
 }

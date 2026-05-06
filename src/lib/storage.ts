@@ -1098,6 +1098,15 @@ export function setForceWeekendOpen(forceWeekendOpen: boolean, baseState = loadA
   return nextState;
 }
 
+function adjustRewardForBudget(rewardAmount: number, wallet: Wallet, monthlyBudgetLimit: number) {
+  const remaining = Math.max(monthlyBudgetLimit - wallet.monthlyUnlockedAmount, 0);
+  if (remaining <= 0) {
+    return { actualReward: 1, budgetExhausted: true };
+  }
+  const actualReward = Math.min(rewardAmount, remaining);
+  return { actualReward, budgetExhausted: actualReward < rewardAmount };
+}
+
 export function singleGachaPull(baseState = loadAppState(), now = new Date()) {
   const syncedWallet = syncWalletMonth(baseState.wallet, now);
   const gachaCost = baseState.userSettings.gachaCost;
@@ -1124,13 +1133,18 @@ export function singleGachaPull(baseState = loadAppState(), now = new Date()) {
 
   const timestamp = createTimestamp(now);
   const tier = rollGachaReward();
+  const { actualReward, budgetExhausted } = adjustRewardForBudget(
+    tier.rewardAmount,
+    syncedWallet,
+    baseState.userSettings.monthlyBudgetLimit,
+  );
   const pull: GachaPull = {
     id: createId("pull"),
     poolId: WEEKEND_GACHA_POOL.id,
     pullType: "single",
     costGems: gachaCost,
     rarity: tier.rarity,
-    rewardAmount: tier.rewardAmount,
+    rewardAmount: actualReward,
     pityTriggered: false,
     createdAt: timestamp,
   };
@@ -1140,8 +1154,8 @@ export function singleGachaPull(baseState = loadAppState(), now = new Date()) {
     wallet: {
       ...syncedWallet,
       gems: syncedWallet.gems - gachaCost,
-      rewardBalance: syncedWallet.rewardBalance + tier.rewardAmount,
-      monthlyUnlockedAmount: syncedWallet.monthlyUnlockedAmount + tier.rewardAmount,
+      rewardBalance: syncedWallet.rewardBalance + actualReward,
+      monthlyUnlockedAmount: syncedWallet.monthlyUnlockedAmount + actualReward,
       updatedAt: timestamp,
       month: syncedWallet.month || getLocalMonthKey(now),
     },
@@ -1151,9 +1165,11 @@ export function singleGachaPull(baseState = loadAppState(), now = new Date()) {
         type: "gacha_reward",
         gemsDelta: 0,
         dustDelta: 0,
-        rewardBalanceDelta: tier.rewardAmount,
+        rewardBalanceDelta: actualReward,
         relatedGachaPullId: pull.id,
-        note: `抽卡获得 ${tier.rarity} 奖励`,
+        note: budgetExhausted
+          ? `月度预算已耗尽，获得象征性奖励 ¥${actualReward}`
+          : `抽卡获得 ${tier.rarity} 奖励`,
         createdAt: timestamp,
       },
       {
@@ -1205,13 +1221,18 @@ export function singleGachaPullWithPity(baseState = loadAppState(), now = new Da
     enablePity: baseState.userSettings.enablePity,
   });
   const tier = pityResult.tier;
+  const { actualReward, budgetExhausted } = adjustRewardForBudget(
+    tier.rewardAmount,
+    syncedWallet,
+    baseState.userSettings.monthlyBudgetLimit,
+  );
   const pull: GachaPull = {
     id: createId("pull"),
     poolId: WEEKEND_GACHA_POOL.id,
     pullType: "single",
     costGems: gachaCost,
     rarity: tier.rarity,
-    rewardAmount: tier.rewardAmount,
+    rewardAmount: actualReward,
     pityTriggered: pityResult.pityTriggered,
     createdAt: timestamp,
   };
@@ -1230,8 +1251,8 @@ export function singleGachaPullWithPity(baseState = loadAppState(), now = new Da
     wallet: {
       ...syncedWallet,
       gems: syncedWallet.gems - gachaCost,
-      rewardBalance: syncedWallet.rewardBalance + tier.rewardAmount,
-      monthlyUnlockedAmount: syncedWallet.monthlyUnlockedAmount + tier.rewardAmount,
+      rewardBalance: syncedWallet.rewardBalance + actualReward,
+      monthlyUnlockedAmount: syncedWallet.monthlyUnlockedAmount + actualReward,
       updatedAt: timestamp,
       month: syncedWallet.month || getLocalMonthKey(now),
     },
@@ -1242,11 +1263,13 @@ export function singleGachaPullWithPity(baseState = loadAppState(), now = new Da
         type: "gacha_reward",
         gemsDelta: 0,
         dustDelta: 0,
-        rewardBalanceDelta: tier.rewardAmount,
+        rewardBalanceDelta: actualReward,
         relatedGachaPullId: pull.id,
-        note: pull.pityTriggered
-          ? `抽卡获得 ${tier.rarity} 奖励（保底触发）`
-          : `抽卡获得 ${tier.rarity} 奖励`,
+        note: budgetExhausted
+          ? `月度预算已耗尽，获得象征性奖励 ¥${actualReward}`
+          : pull.pityTriggered
+            ? `抽卡获得 ${tier.rarity} 奖励（保底触发）`
+            : `抽卡获得 ${tier.rarity} 奖励`,
         createdAt: timestamp,
       },
       {
@@ -1301,14 +1324,31 @@ export function performTenPull(baseState = loadAppState(), now = new Date()) {
     enablePity: baseState.userSettings.enablePity,
   });
 
-  const pulls: GachaPull[] = sequence.results.map((result, index) => ({
+  let runningWallet = { ...syncedWallet };
+  const budgetLimit = baseState.userSettings.monthlyBudgetLimit;
+  const adjustedResults = sequence.results.map((result) => {
+    const { actualReward, budgetExhausted } = adjustRewardForBudget(
+      result.rewardAmount,
+      runningWallet,
+      budgetLimit,
+    );
+    runningWallet = {
+      ...runningWallet,
+      monthlyUnlockedAmount: runningWallet.monthlyUnlockedAmount + actualReward,
+    };
+    return { ...result, actualReward, budgetExhausted };
+  });
+  const totalActualReward = adjustedResults.reduce((sum, r) => sum + r.actualReward, 0);
+  const budgetExhaustedCount = adjustedResults.filter((r) => r.budgetExhausted).length;
+
+  const pulls: GachaPull[] = adjustedResults.map((result, index) => ({
     id: createId("pull"),
     poolId: WEEKEND_GACHA_POOL.id,
     batchId,
     pullType: "ten",
     costGems: gachaCost,
     rarity: result.rarity,
-    rewardAmount: result.rewardAmount,
+    rewardAmount: result.actualReward,
     pityTriggered: result.pityTriggered,
     createdAt: new Date(now.getTime() + index).toISOString(),
   }));
@@ -1326,9 +1366,9 @@ export function performTenPull(baseState = loadAppState(), now = new Date()) {
     wallet: {
       ...syncedWallet,
       gems: syncedWallet.gems - totalCost,
-      rewardBalance: syncedWallet.rewardBalance + sequence.totalRewardAmount,
+      rewardBalance: syncedWallet.rewardBalance + totalActualReward,
       monthlyUnlockedAmount:
-        syncedWallet.monthlyUnlockedAmount + sequence.totalRewardAmount,
+        syncedWallet.monthlyUnlockedAmount + totalActualReward,
       updatedAt: timestamp,
       month: syncedWallet.month || getLocalMonthKey(now),
     },
@@ -1339,12 +1379,14 @@ export function performTenPull(baseState = loadAppState(), now = new Date()) {
         type: "gacha_reward",
         gemsDelta: 0,
         dustDelta: 0,
-        rewardBalanceDelta: sequence.totalRewardAmount,
+        rewardBalanceDelta: totalActualReward,
         relatedGachaPullId: pulls[pulls.length - 1]?.id,
         note:
-          sequence.pityTriggeredCount > 0
-            ? `十连抽：获得快乐预算 ¥${sequence.totalRewardAmount}（含 ${sequence.pityTriggeredCount} 次保底）`
-            : `十连抽：获得快乐预算 ¥${sequence.totalRewardAmount}`,
+          budgetExhaustedCount > 0
+            ? `十连抽：获得快乐预算 ¥${totalActualReward}（${budgetExhaustedCount} 次预算耗尽降级）`
+            : sequence.pityTriggeredCount > 0
+              ? `十连抽：获得快乐预算 ¥${totalActualReward}（含 ${sequence.pityTriggeredCount} 次保底）`
+              : `十连抽：获得快乐预算 ¥${totalActualReward}`,
         createdAt: timestamp,
       },
       {

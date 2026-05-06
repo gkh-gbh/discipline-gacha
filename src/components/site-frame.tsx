@@ -1,4 +1,4 @@
-import { CalendarDays, Compass, Gem, Sparkles, WalletCards } from "lucide-react";
+import { BarChart3, CalendarDays, Compass, Gem, Sparkles, WalletCards } from "lucide-react";
 import Link from "next/link";
 
 const navItems = [
@@ -6,6 +6,7 @@ const navItems = [
   { href: "/tasks", label: "任务页", shortLabel: "任务" },
   { href: "/pool", label: "卡池页", shortLabel: "卡池" },
   { href: "/wallet", label: "钱包页", shortLabel: "钱包" },
+  { href: "/stats", label: "统计", shortLabel: "统计" },
   { href: "/settings", label: "设置页", shortLabel: "设置" },
 ] as const;
 
@@ -14,6 +15,7 @@ const navIcons = {
   "/tasks": CalendarDays,
   "/pool": Sparkles,
   "/wallet": WalletCards,
+  "/stats": BarChart3,
   "/settings": Gem,
 };
 

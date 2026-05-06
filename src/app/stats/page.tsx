@@ -1,0 +1,186 @@
+"use client";
+
+import { useAppState } from "@/components/app-state-provider";
+import { SectionCard, StatCard, StatGrid } from "@/components/ui";
+import { getStatsPageData } from "@/lib/app-state";
+
+export default function StatsPage() {
+  const { appState, isHydrated } = useAppState();
+
+  if (!isHydrated) {
+    return (
+      <div className="space-y-6">
+        <SectionCard eyebrow="Stats" title="数据统计">
+          <p className="muted text-sm">正在加载数据...</p>
+        </SectionCard>
+      </div>
+    );
+  }
+
+  const stats = getStatsPageData(appState);
+
+  return (
+    <div className="space-y-6">
+      <SectionCard eyebrow="Overview" title="总览">
+        <StatGrid className="lg:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            title="今日已完成"
+            value={`${stats.todayCompleted}`}
+            hint="今天完成的任务数"
+            tone="teal"
+          />
+          <StatCard
+            title="累计完成"
+            value={`${stats.totalCompleted} / ${stats.totalTasks}`}
+            hint="已完成 / 总任务数"
+            tone="gold"
+          />
+          <StatCard
+            title="快乐预算余额"
+            value={`¥${appState.wallet.rewardBalance}`}
+            hint="当前可用金额"
+            tone="coral"
+          />
+          <StatCard
+            title="本月已解锁"
+            value={`¥${appState.wallet.monthlyUnlockedAmount}`}
+            hint="本月抽卡+兑换解锁"
+            tone="stone"
+          />
+        </StatGrid>
+      </SectionCard>
+
+      <SectionCard eyebrow="Weekly" title="本周数据">
+        <StatGrid className="lg:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            title="本周获得宝石"
+            value={`${stats.weekGems}`}
+            hint="本周所有来源的宝石"
+            tone="teal"
+          />
+          <StatCard
+            title="本周获得星尘"
+            value={`${stats.weekDust}`}
+            hint="本周所有来源的星尘"
+            tone="gold"
+          />
+          <StatCard
+            title="本周抽卡次数"
+            value={`${stats.weekPulls}`}
+            hint="本周已完成的抽卡"
+            tone="coral"
+          />
+          <StatCard
+            title="当前宝石"
+            value={`${appState.wallet.gems}`}
+            hint="可用于抽卡"
+            tone="stone"
+          />
+        </StatGrid>
+      </SectionCard>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <SectionCard eyebrow="Series" title="系列任务周进度">
+          {stats.seriesProgress.length === 0 ? (
+            <p className="muted text-sm">还没有进行中的系列任务。</p>
+          ) : (
+            <div className="space-y-3">
+              {stats.seriesProgress.map((item) => (
+                <div
+                  key={item.title}
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-[var(--card-strong)] px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{item.title}</p>
+                    <p className="muted mt-1 text-xs">
+                      {item.completed} / {item.target} 次
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="h-2 w-24 overflow-hidden rounded-full bg-stone-200">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          item.reached ? "bg-teal-500" : "bg-amber-400"
+                        }`}
+                        style={{
+                          width: `${Math.min((item.completed / item.target) * 100, 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        item.reached
+                          ? "bg-teal-100 text-teal-800"
+                          : "bg-stone-100 text-stone-600"
+                      }`}
+                    >
+                      {item.reached ? "达成" : `${Math.round((item.completed / item.target) * 100)}%`}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard eyebrow="Main" title="主线任务进度">
+          <div className="mb-4 grid gap-4 sm:grid-cols-2">
+            <StatCard
+              title="已完成"
+              value={`${stats.mainCompleted}`}
+              hint="个主线任务完成"
+              tone="teal"
+            />
+            <StatCard
+              title="总数"
+              value={`${stats.mainTotal}`}
+              hint="个主线任务（含已完成）"
+              tone="stone"
+            />
+          </div>
+          {stats.mainTotal > 0 ? (
+            <div className="rounded-2xl border border-[var(--line)] bg-[var(--card-strong)] px-4 py-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-stone-600">完成率</span>
+                <span className="font-medium">
+                  {Math.round((stats.mainCompleted / stats.mainTotal) * 100)}%
+                </span>
+              </div>
+              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-stone-200">
+                <div
+                  className="h-full rounded-full bg-teal-500 transition-all"
+                  style={{
+                    width: `${Math.round((stats.mainCompleted / stats.mainTotal) * 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+          ) : null}
+        </SectionCard>
+      </div>
+
+      <SectionCard eyebrow="Wallet" title="钱包汇总">
+        <StatGrid className="lg:grid-cols-2 xl:grid-cols-3">
+          <StatCard
+            title="累计解锁"
+            value={`¥${stats.totalUnlocked}`}
+            hint="本月抽卡+兑换解锁总额"
+            tone="gold"
+          />
+          <StatCard
+            title="累计消费"
+            value={`¥${stats.totalSpent}`}
+            hint="所有消费记录总和"
+            tone="coral"
+          />
+          <StatCard
+            title="当前余额"
+            value={`¥${appState.wallet.rewardBalance}`}
+            hint="解锁 - 消费"
+            tone="teal"
+          />
+        </StatGrid>
+      </SectionCard>
+    </div>
+  );
+}
