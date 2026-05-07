@@ -36,11 +36,11 @@ export function SiteFrame({ children }: SiteFrameProps) {
               现实任务抽卡系统
             </h1>
             <p className="muted mt-2 max-w-2xl text-sm sm:text-base">
-              个人使用的轻量自律应用。当前已经串起任务奖励、每日模板自动发布、周末抽卡、快乐预算和消费记录的最小闭环。
+              完成现实任务获得宝石，周末抽卡解锁快乐预算，用游戏化方式激励自律行动。
             </p>
           </div>
           <div className="rounded-full border border-[var(--line)] bg-white/70 px-4 py-2 text-sm text-[var(--muted)]">
-            目标闭环：任务 → 资源 → 抽卡 → 快乐预算 → 消费记录
+            任务 → 宝石 → 抽卡 → 快乐预算
           </div>
         </div>
       </header>
