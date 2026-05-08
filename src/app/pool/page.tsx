@@ -319,10 +319,24 @@ export default function PoolPage() {
             />
           </div>
 
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <InfoCapsule
+              label="UR 保底"
+              value={
+                pityStatus.enabled
+                  ? `${Math.min(pityStatus.pullsSinceLastUr, pityStatus.urThreshold - 1)} / ${pityStatus.urThreshold}`
+                  : "已关闭"
+              }
+            />
+          </div>
+
           <div className="mt-4 space-y-2 text-sm text-stone-300">
             <p>{poolStatus.helperText}</p>
             {pityStatus.enabled ? (
-              <p>距离 SR 保底还差 {pityStatus.remainingPulls} 抽。</p>
+              <>
+                <p>距离 SR 保底还差 {pityStatus.remainingPulls} 抽。</p>
+                <p>距离 UR 保底还差 {pityStatus.remainingUrPulls} 抽。</p>
+              </>
             ) : (
               <p>保底已关闭，当前完全按概率抽取。</p>
             )}

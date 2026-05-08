@@ -8,6 +8,7 @@ import type {
 
 export const DEFAULT_GACHA_COST = 100;
 export const SR_PITY_THRESHOLD = 10;
+export const UR_PITY_THRESHOLD = 100;
 export const TEN_PULL_COUNT = 10;
 
 export const WEEKEND_GACHA_POOL: GachaPool = {
@@ -162,8 +163,16 @@ export function isSrOrHigher(rarity: RewardRarity) {
   return rarity === "SR" || rarity === "SSR" || rarity === "UR";
 }
 
+export function isUr(rarity: RewardRarity) {
+  return rarity === "UR";
+}
+
 export function getRemainingPullsUntilSrPity(pullsSinceLastSR: number) {
   return Math.max(SR_PITY_THRESHOLD - pullsSinceLastSR, 0);
+}
+
+export function getRemainingPullsUntilUrPity(pullsSinceLastUr: number) {
+  return Math.max(UR_PITY_THRESHOLD - pullsSinceLastUr, 0);
 }
 
 export function rollGachaReward(randomValue = Math.random(), customTiers?: GachaRewardTier[]) {
@@ -186,22 +195,32 @@ export function resolveGachaRewardWithPity(options: {
   enablePity: boolean;
   randomValue?: number;
   customTiers?: GachaRewardTier[];
+  urPityThreshold?: number;
 }) {
   const tiers = options.customTiers ?? GACHA_REWARD_TIERS;
-  const shouldTriggerPity =
+  const urPityThreshold = options.urPityThreshold ?? UR_PITY_THRESHOLD;
+  const shouldTriggerUrPity =
+    options.enablePity && options.pityState.pullsSinceLastSSR >= urPityThreshold - 1;
+  const shouldTriggerSrPity =
     options.enablePity && options.pityState.pullsSinceLastSR >= SR_PITY_THRESHOLD - 1;
-  const tier = shouldTriggerPity
-    ? (tiers.find((t) => t.rarity === "SR") ?? tiers[2])
-    : rollGachaReward(options.randomValue, tiers);
-  const pityTriggered = shouldTriggerPity;
+  const tier = shouldTriggerUrPity
+    ? (tiers.find((t) => t.rarity === "UR") ?? tiers[tiers.length - 1])
+    : shouldTriggerSrPity
+      ? (tiers.find((t) => t.rarity === "SR") ?? tiers[2])
+      : rollGachaReward(options.randomValue, tiers);
+  const pityTriggered = shouldTriggerUrPity || shouldTriggerSrPity;
   const nextPullsSinceLastSR = isSrOrHigher(tier.rarity)
     ? 0
     : options.pityState.pullsSinceLastSR + 1;
+  const nextPullsSinceLastSSR = isUr(tier.rarity)
+    ? 0
+    : options.pityState.pullsSinceLastSSR + 1;
 
   return {
     tier,
     pityTriggered,
     nextPullsSinceLastSR,
+    nextPullsSinceLastSSR,
   };
 }
 
@@ -211,6 +230,7 @@ export function resolveSequentialGachaPulls(options: {
   enablePity: boolean;
   randomValues?: number[];
   customTiers?: GachaRewardTier[];
+  urPityThreshold?: number;
 }) {
   let currentPityState = { ...options.pityState };
   const results: Array<{
@@ -225,6 +245,7 @@ export function resolveSequentialGachaPulls(options: {
       enablePity: options.enablePity,
       randomValue: options.randomValues?.[index],
       customTiers: options.customTiers,
+      urPityThreshold: options.urPityThreshold,
     });
 
     results.push({
@@ -236,9 +257,7 @@ export function resolveSequentialGachaPulls(options: {
     currentPityState = {
       ...currentPityState,
       pullsSinceLastSR: result.nextPullsSinceLastSR,
-      pullsSinceLastSSR: isSrOrHigher(result.tier.rarity)
-        ? 0
-        : currentPityState.pullsSinceLastSSR,
+      pullsSinceLastSSR: result.nextPullsSinceLastSSR,
     };
   }
 

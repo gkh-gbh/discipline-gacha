@@ -45,6 +45,7 @@ type UserSettingsFormInput = Pick<
   | "gachaRewardTiers"
   | "showDevTools"
   | "enablePity"
+  | "urPityThreshold"
   | "seriesWeeklyTarget"
   | "seriesWeeklyBonusMultiplier"
 >;

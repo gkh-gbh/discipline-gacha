@@ -54,6 +54,7 @@ type UserSettingsUpdateInput = Pick<
   | "gachaRewardTiers"
   | "showDevTools"
   | "enablePity"
+  | "urPityThreshold"
   | "seriesWeeklyTarget"
   | "seriesWeeklyBonusMultiplier"
 >;
@@ -154,6 +155,7 @@ export function createUserSettingsTemplate(date = new Date()): UserSettings {
     gachaRewardTiers: DEFAULT_GACHA_REWARD_TIERS.map((t) => ({ ...t })),
     showDevTools: true,
     enablePity: true,
+    urPityThreshold: 100,
     seriesWeeklyTarget: DEFAULT_SERIES_WEEKLY_TARGET,
     seriesWeeklyBonusMultiplier: SERIES_WEEKLY_BONUS_MULTIPLIER,
     timezone: getDefaultTimezone(),
@@ -463,6 +465,10 @@ function normalizeUserSettings(candidate: unknown): UserSettings {
       typeof candidate.showDevTools === "boolean" ? candidate.showDevTools : true,
     enablePity:
       typeof candidate.enablePity === "boolean" ? candidate.enablePity : defaults.enablePity,
+    urPityThreshold:
+      typeof candidate.urPityThreshold === "number" && candidate.urPityThreshold >= 1
+        ? Math.round(candidate.urPityThreshold)
+        : defaults.urPityThreshold,
     seriesWeeklyTarget:
       typeof candidate.seriesWeeklyTarget === "number" && candidate.seriesWeeklyTarget >= 1 && candidate.seriesWeeklyTarget <= 7
         ? Math.round(candidate.seriesWeeklyTarget)
@@ -668,6 +674,10 @@ export function updateUserSettings(
     baseState.userSettings.seriesWeeklyBonusMultiplier,
   );
   const gachaRewardTiers = normalizeGachaRewardTiers(input.gachaRewardTiers);
+  const urPityThreshold = normalizePositiveNumber(
+    input.urPityThreshold,
+    baseState.userSettings.urPityThreshold,
+  );
   const timestamp = createTimestamp(now);
 
   const nextState: AppState = {
@@ -681,6 +691,7 @@ export function updateUserSettings(
       gachaRewardTiers,
       showDevTools,
       enablePity,
+      urPityThreshold,
       seriesWeeklyTarget,
       seriesWeeklyBonusMultiplier,
       updatedAt: timestamp,
@@ -1242,6 +1253,7 @@ export function singleGachaPullWithPity(baseState = loadAppState(), now = new Da
     pityState: baseState.pityState,
     enablePity: baseState.userSettings.enablePity,
     customTiers,
+    urPityThreshold: baseState.userSettings.urPityThreshold,
   });
   const tier = pityResult.tier;
   const pull: GachaPull = {
@@ -1258,9 +1270,7 @@ export function singleGachaPullWithPity(baseState = loadAppState(), now = new Da
     ...baseState.pityState,
     poolId: WEEKEND_GACHA_POOL.id,
     pullsSinceLastSR: pityResult.nextPullsSinceLastSR,
-    pullsSinceLastSSR: isSrOrHigher(tier.rarity)
-      ? 0
-      : baseState.pityState.pullsSinceLastSSR,
+    pullsSinceLastSSR: pityResult.nextPullsSinceLastSSR,
     updatedAt: timestamp,
   };
 
@@ -1340,6 +1350,7 @@ export function performTenPull(baseState = loadAppState(), now = new Date()) {
     pityState: baseState.pityState,
     enablePity: baseState.userSettings.enablePity,
     customTiers,
+    urPityThreshold: baseState.userSettings.urPityThreshold,
   });
 
   const pulls: GachaPull[] = sequence.results.map((result, index) => ({

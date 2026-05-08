@@ -60,6 +60,7 @@ describe("createUserSettingsTemplate", () => {
     expect(settings.gachaCost).toBe(100);
     expect(settings.gachaOpenDays).toEqual([0, 6]);
     expect(settings.enablePity).toBe(true);
+    expect(settings.urPityThreshold).toBe(100);
   });
 
   it("uses provided date for timestamps", () => {

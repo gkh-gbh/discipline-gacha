@@ -61,6 +61,7 @@ export default function SettingsPage() {
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [showDevTools, setShowDevTools] = useState(true);
   const [enablePity, setEnablePity] = useState(true);
+  const [urPityThreshold, setUrPityThreshold] = useState("100");
   const [seriesWeeklyTarget, setSeriesWeeklyTarget] = useState("3");
   const [seriesWeeklyBonusMultiplier, setSeriesWeeklyBonusMultiplier] = useState("0.5");
   const [gachaTiers, setGachaTiers] = useState<GachaTierSetting[]>(
@@ -83,6 +84,7 @@ export default function SettingsPage() {
     setSelectedDays(appState.userSettings.gachaOpenDays);
     setShowDevTools(appState.userSettings.showDevTools);
     setEnablePity(appState.userSettings.enablePity);
+    setUrPityThreshold(String(appState.userSettings.urPityThreshold));
     setSeriesWeeklyTarget(String(appState.userSettings.seriesWeeklyTarget));
     setSeriesWeeklyBonusMultiplier(String(appState.userSettings.seriesWeeklyBonusMultiplier));
     setGachaTiers(appState.userSettings.gachaRewardTiers.map((t) => ({ ...t })));
@@ -120,6 +122,15 @@ export default function SettingsPage() {
       return "阶段奖励倍率必须在 0-5 之间。";
     }
 
+    const urPityThresholdNum = Number(urPityThreshold);
+    if (
+      !urPityThreshold.trim() ||
+      !Number.isFinite(urPityThresholdNum) ||
+      urPityThresholdNum < 1
+    ) {
+      return "UR 保底阈值必须是大于等于 1 的整数。";
+    }
+
     const totalProb = gachaTiers.reduce((sum, t) => sum + t.probability, 0);
     if (Math.abs(totalProb - 1) > 0.001) {
       return `抽卡概率总和必须为 100%，当前为 ${Math.round(totalProb * 100)}%。`;
@@ -144,6 +155,7 @@ export default function SettingsPage() {
     monthlyBudgetNumber,
     parsedRewardDraft,
     selectedDays.length,
+    urPityThreshold,
     seriesWeeklyTarget,
     seriesWeeklyBonusMultiplier,
   ]);
@@ -186,6 +198,7 @@ export default function SettingsPage() {
       gachaRewardTiers: gachaTiers,
       showDevTools,
       enablePity,
+      urPityThreshold: Number(urPityThreshold),
       seriesWeeklyTarget: Number(seriesWeeklyTarget),
       seriesWeeklyBonusMultiplier: Number(seriesWeeklyBonusMultiplier),
     });
@@ -261,7 +274,7 @@ export default function SettingsPage() {
         title="个人配置"
         description="把卡池开放日、单抽成本、保底开关、月度预算和任务奖励都切换成可保存的个人设置。"
       >
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-5">
           <SummaryCard
             label="当前月度预算上限"
             value={`¥${appState.userSettings.monthlyBudgetLimit}`}
@@ -274,6 +287,10 @@ export default function SettingsPage() {
           <SummaryCard
             label="SR 保底"
             value={appState.userSettings.enablePity ? "已开启" : "已关闭"}
+          />
+          <SummaryCard
+            label="UR 保底"
+            value={`${appState.userSettings.urPityThreshold} 抽`}
           />
         </div>
 
@@ -337,6 +354,28 @@ export default function SettingsPage() {
               setActionMessage(null);
             }}
           />
+
+          <div className="rounded-[24px] border border-[var(--line)] bg-white/70 p-5">
+            <p className="text-sm font-medium text-stone-700">UR 保底设置</p>
+            <p className="muted mt-2 text-sm">
+              与 SR 保底独立计算。达到阈值后，下一抽必定获得 1 个 UR。
+            </p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <InputField
+                label="UR 保底阈值"
+                value={urPityThreshold}
+                min="1"
+                onChange={(value) => {
+                  setUrPityThreshold(value);
+                  setActionMessage(null);
+                }}
+              />
+              <div className="rounded-[22px] bg-white/65 px-4 py-4 text-sm text-stone-700">
+                <p className="font-medium">当前规则</p>
+                <p className="muted mt-1">{urPityThreshold || "?"} 抽内必出 1 个 UR。</p>
+              </div>
+            </div>
+          </div>
 
           <div className="rounded-[24px] border border-[var(--line)] bg-white/70 p-5">
             <p className="text-sm font-medium text-stone-700">抽卡概率与奖励设置</p>

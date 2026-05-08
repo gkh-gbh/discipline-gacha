@@ -35,6 +35,7 @@ export type UserSettings = {
   gachaRewardTiers: GachaTierSetting[];
   showDevTools: boolean;
   enablePity: boolean;
+  urPityThreshold: number;
   seriesWeeklyTarget: number;
   seriesWeeklyBonusMultiplier: number;
   timezone: string;

@@ -5,11 +5,13 @@ import {
   resolveSequentialGachaPulls,
   isSrOrHigher,
   getRemainingPullsUntilSrPity,
+  getRemainingPullsUntilUrPity,
   getGachaTierByRarity,
   formatPullResult,
   GACHA_REWARD_TIERS,
   DEFAULT_GACHA_COST,
   SR_PITY_THRESHOLD,
+  UR_PITY_THRESHOLD,
 } from "@/lib/gacha";
 import type { PityState, GachaPull } from "@/types/domain";
 
@@ -97,6 +99,20 @@ describe("getRemainingPullsUntilSrPity", () => {
   });
 });
 
+describe("getRemainingPullsUntilUrPity", () => {
+  it("returns threshold when no pulls since last UR", () => {
+    expect(getRemainingPullsUntilUrPity(0)).toBe(UR_PITY_THRESHOLD);
+  });
+
+  it("returns 0 when UR pity threshold reached", () => {
+    expect(getRemainingPullsUntilUrPity(UR_PITY_THRESHOLD)).toBe(0);
+  });
+
+  it("returns correct remaining for partial progress", () => {
+    expect(getRemainingPullsUntilUrPity(77)).toBe(23);
+  });
+});
+
 describe("getGachaTierByRarity", () => {
   it("finds each rarity", () => {
     expect(getGachaTierByRarity("N").rarity).toBe("N");
@@ -157,6 +173,44 @@ describe("resolveGachaRewardWithPity", () => {
 
     expect(result.nextPullsSinceLastSR).toBe(4);
   });
+
+  it("triggers independent UR pity when pullsSinceLastSSR >= threshold - 1", () => {
+    const pityState = makePityState({ pullsSinceLastSR: 0, pullsSinceLastSSR: UR_PITY_THRESHOLD - 1 });
+    const result = resolveGachaRewardWithPity({
+      pityState,
+      enablePity: true,
+      randomValue: 0,
+    });
+
+    expect(result.pityTriggered).toBe(true);
+    expect(result.tier.rarity).toBe("UR");
+    expect(result.nextPullsSinceLastSR).toBe(0);
+    expect(result.nextPullsSinceLastSSR).toBe(0);
+  });
+
+  it("increments pullsSinceLastSSR when UR is not hit", () => {
+    const pityState = makePityState({ pullsSinceLastSR: 0, pullsSinceLastSSR: 12 });
+    const result = resolveGachaRewardWithPity({
+      pityState,
+      enablePity: true,
+      randomValue: 0.85,
+    });
+
+    expect(result.tier.rarity).toBe("SR");
+    expect(result.nextPullsSinceLastSSR).toBe(13);
+  });
+
+  it("resets pullsSinceLastSSR when UR is rolled naturally", () => {
+    const pityState = makePityState({ pullsSinceLastSR: 0, pullsSinceLastSSR: 12 });
+    const result = resolveGachaRewardWithPity({
+      pityState,
+      enablePity: true,
+      randomValue: 0.999,
+    });
+
+    expect(result.tier.rarity).toBe("UR");
+    expect(result.nextPullsSinceLastSSR).toBe(0);
+  });
 });
 
 describe("resolveSequentialGachaPulls", () => {
@@ -210,6 +264,20 @@ describe("resolveSequentialGachaPulls", () => {
     });
 
     expect(result.nextPityState.pullsSinceLastSR).toBe(2);
+  });
+
+  it("applies UR pity within sequential pulls", () => {
+    const pityState = makePityState({ pullsSinceLastSR: 0, pullsSinceLastSSR: UR_PITY_THRESHOLD - 1 });
+    const result = resolveSequentialGachaPulls({
+      count: 1,
+      pityState,
+      enablePity: true,
+      randomValues: [0],
+    });
+
+    expect(result.results[0].rarity).toBe("UR");
+    expect(result.results[0].pityTriggered).toBe(true);
+    expect(result.nextPityState.pullsSinceLastSSR).toBe(0);
   });
 });
 
