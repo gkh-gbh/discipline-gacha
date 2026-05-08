@@ -174,6 +174,19 @@ describe("resolveGachaRewardWithPity", () => {
     expect(result.nextPullsSinceLastSR).toBe(4);
   });
 
+  it("uses custom SR pity threshold", () => {
+    const pityState = makePityState({ pullsSinceLastSR: 4, pullsSinceLastSSR: 0 });
+    const result = resolveGachaRewardWithPity({
+      pityState,
+      enablePity: true,
+      randomValue: 0,
+      srPityThreshold: 5,
+    });
+
+    expect(result.pityTriggered).toBe(true);
+    expect(result.tier.rarity).toBe("SR");
+  });
+
   it("triggers independent UR pity when pullsSinceLastSSR >= threshold - 1", () => {
     const pityState = makePityState({ pullsSinceLastSR: 0, pullsSinceLastSSR: UR_PITY_THRESHOLD - 1 });
     const result = resolveGachaRewardWithPity({
@@ -278,6 +291,21 @@ describe("resolveSequentialGachaPulls", () => {
     expect(result.results[0].rarity).toBe("UR");
     expect(result.results[0].pityTriggered).toBe(true);
     expect(result.nextPityState.pullsSinceLastSSR).toBe(0);
+  });
+
+  it("applies custom SR pity within sequential pulls", () => {
+    const pityState = makePityState({ pullsSinceLastSR: 4, pullsSinceLastSSR: 0 });
+    const result = resolveSequentialGachaPulls({
+      count: 1,
+      pityState,
+      enablePity: true,
+      randomValues: [0],
+      srPityThreshold: 5,
+    });
+
+    expect(result.results[0].rarity).toBe("SR");
+    expect(result.results[0].pityTriggered).toBe(true);
+    expect(result.nextPityState.pullsSinceLastSR).toBe(0);
   });
 });
 

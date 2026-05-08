@@ -54,6 +54,7 @@ type UserSettingsUpdateInput = Pick<
   | "gachaRewardTiers"
   | "showDevTools"
   | "enablePity"
+  | "srPityThreshold"
   | "urPityThreshold"
   | "seriesWeeklyTarget"
   | "seriesWeeklyBonusMultiplier"
@@ -155,6 +156,7 @@ export function createUserSettingsTemplate(date = new Date()): UserSettings {
     gachaRewardTiers: DEFAULT_GACHA_REWARD_TIERS.map((t) => ({ ...t })),
     showDevTools: true,
     enablePity: true,
+    srPityThreshold: 10,
     urPityThreshold: 100,
     seriesWeeklyTarget: DEFAULT_SERIES_WEEKLY_TARGET,
     seriesWeeklyBonusMultiplier: SERIES_WEEKLY_BONUS_MULTIPLIER,
@@ -465,6 +467,10 @@ function normalizeUserSettings(candidate: unknown): UserSettings {
       typeof candidate.showDevTools === "boolean" ? candidate.showDevTools : true,
     enablePity:
       typeof candidate.enablePity === "boolean" ? candidate.enablePity : defaults.enablePity,
+    srPityThreshold:
+      typeof candidate.srPityThreshold === "number" && candidate.srPityThreshold >= 1
+        ? Math.round(candidate.srPityThreshold)
+        : defaults.srPityThreshold,
     urPityThreshold:
       typeof candidate.urPityThreshold === "number" && candidate.urPityThreshold >= 1
         ? Math.round(candidate.urPityThreshold)
@@ -674,6 +680,10 @@ export function updateUserSettings(
     baseState.userSettings.seriesWeeklyBonusMultiplier,
   );
   const gachaRewardTiers = normalizeGachaRewardTiers(input.gachaRewardTiers);
+  const srPityThreshold = normalizePositiveNumber(
+    input.srPityThreshold,
+    baseState.userSettings.srPityThreshold,
+  );
   const urPityThreshold = normalizePositiveNumber(
     input.urPityThreshold,
     baseState.userSettings.urPityThreshold,
@@ -691,6 +701,7 @@ export function updateUserSettings(
       gachaRewardTiers,
       showDevTools,
       enablePity,
+      srPityThreshold,
       urPityThreshold,
       seriesWeeklyTarget,
       seriesWeeklyBonusMultiplier,
@@ -1253,6 +1264,7 @@ export function singleGachaPullWithPity(baseState = loadAppState(), now = new Da
     pityState: baseState.pityState,
     enablePity: baseState.userSettings.enablePity,
     customTiers,
+    srPityThreshold: baseState.userSettings.srPityThreshold,
     urPityThreshold: baseState.userSettings.urPityThreshold,
   });
   const tier = pityResult.tier;
@@ -1350,6 +1362,7 @@ export function performTenPull(baseState = loadAppState(), now = new Date()) {
     pityState: baseState.pityState,
     enablePity: baseState.userSettings.enablePity,
     customTiers,
+    srPityThreshold: baseState.userSettings.srPityThreshold,
     urPityThreshold: baseState.userSettings.urPityThreshold,
   });
 

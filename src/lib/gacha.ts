@@ -195,14 +195,16 @@ export function resolveGachaRewardWithPity(options: {
   enablePity: boolean;
   randomValue?: number;
   customTiers?: GachaRewardTier[];
+  srPityThreshold?: number;
   urPityThreshold?: number;
 }) {
   const tiers = options.customTiers ?? GACHA_REWARD_TIERS;
+  const srPityThreshold = options.srPityThreshold ?? SR_PITY_THRESHOLD;
   const urPityThreshold = options.urPityThreshold ?? UR_PITY_THRESHOLD;
   const shouldTriggerUrPity =
     options.enablePity && options.pityState.pullsSinceLastSSR >= urPityThreshold - 1;
   const shouldTriggerSrPity =
-    options.enablePity && options.pityState.pullsSinceLastSR >= SR_PITY_THRESHOLD - 1;
+    options.enablePity && options.pityState.pullsSinceLastSR >= srPityThreshold - 1;
   const tier = shouldTriggerUrPity
     ? (tiers.find((t) => t.rarity === "UR") ?? tiers[tiers.length - 1])
     : shouldTriggerSrPity
@@ -230,6 +232,7 @@ export function resolveSequentialGachaPulls(options: {
   enablePity: boolean;
   randomValues?: number[];
   customTiers?: GachaRewardTier[];
+  srPityThreshold?: number;
   urPityThreshold?: number;
 }) {
   let currentPityState = { ...options.pityState };
@@ -245,6 +248,7 @@ export function resolveSequentialGachaPulls(options: {
       enablePity: options.enablePity,
       randomValue: options.randomValues?.[index],
       customTiers: options.customTiers,
+      srPityThreshold: options.srPityThreshold,
       urPityThreshold: options.urPityThreshold,
     });
 

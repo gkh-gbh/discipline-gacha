@@ -63,6 +63,7 @@ export const settings: UserSettings = {
     { rarity: "SSR", probability: 0.04, rewardAmount: 80, displayName: "传说奖励" },
     { rarity: "UR", probability: 0.01, rewardAmount: 200, displayName: "史诗奖励" },
   ],
+  srPityThreshold: 10,
   urPityThreshold: 100,
   seriesWeeklyTarget: 3,
   seriesWeeklyBonusMultiplier: 0.5,

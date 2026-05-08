@@ -61,6 +61,7 @@ export default function SettingsPage() {
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [showDevTools, setShowDevTools] = useState(true);
   const [enablePity, setEnablePity] = useState(true);
+  const [srPityThreshold, setSrPityThreshold] = useState("10");
   const [urPityThreshold, setUrPityThreshold] = useState("100");
   const [seriesWeeklyTarget, setSeriesWeeklyTarget] = useState("3");
   const [seriesWeeklyBonusMultiplier, setSeriesWeeklyBonusMultiplier] = useState("0.5");
@@ -84,6 +85,7 @@ export default function SettingsPage() {
     setSelectedDays(appState.userSettings.gachaOpenDays);
     setShowDevTools(appState.userSettings.showDevTools);
     setEnablePity(appState.userSettings.enablePity);
+    setSrPityThreshold(String(appState.userSettings.srPityThreshold));
     setUrPityThreshold(String(appState.userSettings.urPityThreshold));
     setSeriesWeeklyTarget(String(appState.userSettings.seriesWeeklyTarget));
     setSeriesWeeklyBonusMultiplier(String(appState.userSettings.seriesWeeklyBonusMultiplier));
@@ -122,6 +124,15 @@ export default function SettingsPage() {
       return "阶段奖励倍率必须在 0-5 之间。";
     }
 
+    const srPityThresholdNum = Number(srPityThreshold);
+    if (
+      !srPityThreshold.trim() ||
+      !Number.isFinite(srPityThresholdNum) ||
+      srPityThresholdNum < 1
+    ) {
+      return "SR 保底阈值必须是大于等于 1 的整数。";
+    }
+
     const urPityThresholdNum = Number(urPityThreshold);
     if (
       !urPityThreshold.trim() ||
@@ -155,6 +166,7 @@ export default function SettingsPage() {
     monthlyBudgetNumber,
     parsedRewardDraft,
     selectedDays.length,
+    srPityThreshold,
     urPityThreshold,
     seriesWeeklyTarget,
     seriesWeeklyBonusMultiplier,
@@ -198,6 +210,7 @@ export default function SettingsPage() {
       gachaRewardTiers: gachaTiers,
       showDevTools,
       enablePity,
+      srPityThreshold: Number(srPityThreshold),
       urPityThreshold: Number(urPityThreshold),
       seriesWeeklyTarget: Number(seriesWeeklyTarget),
       seriesWeeklyBonusMultiplier: Number(seriesWeeklyBonusMultiplier),
@@ -286,7 +299,7 @@ export default function SettingsPage() {
           />
           <SummaryCard
             label="SR 保底"
-            value={appState.userSettings.enablePity ? "已开启" : "已关闭"}
+            value={appState.userSettings.enablePity ? `${appState.userSettings.srPityThreshold} 抽` : "已关闭"}
           />
           <SummaryCard
             label="UR 保底"
@@ -354,6 +367,28 @@ export default function SettingsPage() {
               setActionMessage(null);
             }}
           />
+
+          <div className="rounded-[24px] border border-[var(--line)] bg-white/70 p-5">
+            <p className="text-sm font-medium text-stone-700">SR 保底设置</p>
+            <p className="muted mt-2 text-sm">
+              达到阈值后，下一抽至少获得 1 个 SR 或以上。
+            </p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <InputField
+                label="SR 保底阈值"
+                value={srPityThreshold}
+                min="1"
+                onChange={(value) => {
+                  setSrPityThreshold(value);
+                  setActionMessage(null);
+                }}
+              />
+              <div className="rounded-[22px] bg-white/65 px-4 py-4 text-sm text-stone-700">
+                <p className="font-medium">当前规则</p>
+                <p className="muted mt-1">{srPityThreshold || "?"} 抽内至少出 1 个 SR+。</p>
+              </div>
+            </div>
+          </div>
 
           <div className="rounded-[24px] border border-[var(--line)] bg-white/70 p-5">
             <p className="text-sm font-medium text-stone-700">UR 保底设置</p>

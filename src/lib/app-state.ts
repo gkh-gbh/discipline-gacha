@@ -1,8 +1,4 @@
 import { getLocalDateKey, getWeekStartKey } from "@/lib/storage";
-import {
-  getRemainingPullsUntilSrPity,
-  SR_PITY_THRESHOLD,
-} from "@/lib/gacha";
 import { groupSeriesTasksByCategory, TASK_TYPE_ORDER } from "@/lib/task-types";
 import type { AppState, DailyTaskTemplate, Task, TaskType } from "@/types/domain";
 
@@ -101,17 +97,18 @@ export function getLatestGachaPull(state: AppState) {
 export function getSrPityStatus(state: AppState) {
   const pullsSinceLastSR = state.pityState.pullsSinceLastSR;
   const pullsSinceLastUr = state.pityState.pullsSinceLastSSR;
+  const srThreshold = state.userSettings.srPityThreshold;
   const urThreshold = state.userSettings.urPityThreshold;
 
   return {
     enabled: state.userSettings.enablePity,
     pullsSinceLastSR,
     pullsSinceLastUr,
-    threshold: SR_PITY_THRESHOLD,
+    threshold: srThreshold,
     urThreshold,
-    progressLabel: `${Math.min(pullsSinceLastSR, SR_PITY_THRESHOLD - 1)} / ${SR_PITY_THRESHOLD}`,
+    progressLabel: `${Math.min(pullsSinceLastSR, srThreshold - 1)} / ${srThreshold}`,
     urProgressLabel: `${Math.min(pullsSinceLastUr, urThreshold - 1)} / ${urThreshold}`,
-    remainingPulls: getRemainingPullsUntilSrPity(pullsSinceLastSR),
+    remainingPulls: Math.max(srThreshold - pullsSinceLastSR, 0),
     remainingUrPulls: Math.max(urThreshold - pullsSinceLastUr, 0),
   };
 }
