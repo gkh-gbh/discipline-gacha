@@ -56,6 +56,13 @@ export const settings: UserSettings = {
   },
   showDevTools: true,
   enablePity: true,
+  gachaRewardTiers: [
+    { rarity: "N", probability: 0.6, rewardAmount: 5, displayName: "普通奖励" },
+    { rarity: "R", probability: 0.25, rewardAmount: 15, displayName: "稀有奖励" },
+    { rarity: "SR", probability: 0.1, rewardAmount: 30, displayName: "罕见奖励" },
+    { rarity: "SSR", probability: 0.04, rewardAmount: 80, displayName: "传说奖励" },
+    { rarity: "UR", probability: 0.01, rewardAmount: 200, displayName: "史诗奖励" },
+  ],
   seriesWeeklyTarget: 3,
   seriesWeeklyBonusMultiplier: 0.5,
   timezone: "Asia/Shanghai",

@@ -8,13 +8,12 @@ import { getLatestGachaPull, getSrPityStatus } from "@/lib/app-state";
 import { formatOpenDaysLabel, getGachaPoolStatus } from "@/lib/date";
 import {
   formatPullResult,
-  GACHA_REWARD_TIERS,
   getGachaRarityMeta,
   getGachaTierByRarity,
   TEN_PULL_COUNT,
   WEEKEND_GACHA_POOL,
 } from "@/lib/gacha";
-import type { GachaPull, RewardRarity } from "@/types/domain";
+import type { GachaPull, GachaRewardTier, RewardRarity } from "@/types/domain";
 
 type PullAnimationPhase = "idle" | "charging" | "ready" | "flipping" | "revealed";
 type TenPullPhase = "ready" | "flipping" | "revealed";
@@ -64,6 +63,18 @@ export default function PoolPage() {
   const showDevTools = appState.userSettings.showDevTools;
   const gachaCost = appState.userSettings.gachaCost;
   const tenPullCost = gachaCost * TEN_PULL_COUNT;
+  const rewardTiers: GachaRewardTier[] = appState.userSettings.gachaRewardTiers.map((t) => ({
+    id: `tier_${t.rarity.toLowerCase()}`,
+    poolId: WEEKEND_GACHA_POOL.id,
+    ...t,
+  }));
+  const pullNarration: Record<RewardRarity, string> = {
+    N: `普通奖励，预算 +¥${rewardTiers.find((t) => t.rarity === "N")?.rewardAmount ?? 5}`,
+    R: `不错，预算 +¥${rewardTiers.find((t) => t.rarity === "R")?.rewardAmount ?? 15}`,
+    SR: `手气很好，预算 +¥${rewardTiers.find((t) => t.rarity === "SR")?.rewardAmount ?? 30}`,
+    SSR: `高光时刻，预算 +¥${rewardTiers.find((t) => t.rarity === "SSR")?.rewardAmount ?? 80}`,
+    UR: `传说奖励，预算 +¥${rewardTiers.find((t) => t.rarity === "UR")?.rewardAmount ?? 200}`,
+  };
   const latestPull = getLatestGachaPull(appState);
   const pityStatus = getSrPityStatus(appState);
   const openDaysLabel = formatOpenDaysLabel(appState.userSettings.gachaOpenDays);
@@ -258,7 +269,7 @@ export default function PoolPage() {
     setTenPullOverlay(null);
   }
 
-  const resultMeta = animatedPull ? getGachaRarityMeta(animatedPull.rarity) : null;
+  const resultMeta = animatedPull ? getGachaRarityMeta(animatedPull.rarity, animatedPull.rewardAmount) : null;
   const resultTier = animatedPull ? getGachaTierByRarity(animatedPull.rarity) : null;
 
   return (
@@ -364,7 +375,7 @@ export default function PoolPage() {
                 <span className="text-xs text-stone-400">不扣宝石，不入账</span>
               </div>
               <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
-                {GACHA_REWARD_TIERS.map((tier) => (
+                {rewardTiers.map((tier) => (
                   <button
                     key={tier.id}
                     type="button"
@@ -406,7 +417,7 @@ export default function PoolPage() {
           description="十连不会引入额外折扣或新大保底，只是把 10 次单抽按顺序一起执行。"
         >
           <div className="space-y-3">
-            {GACHA_REWARD_TIERS.map((tier) => (
+            {rewardTiers.map((tier) => (
               <div
                 key={tier.id}
                 className="flex items-center justify-between gap-3 rounded-[22px] border border-[var(--line)] bg-white/70 px-4 py-4"
@@ -514,7 +525,7 @@ function GachaRevealOverlay(props: {
     return null;
   }
 
-  const meta = getGachaRarityMeta(props.pull.rarity);
+  const meta = getGachaRarityMeta(props.pull.rarity, props.pull.rewardAmount);
   const tier = getGachaTierByRarity(props.pull.rarity);
   const isReady = props.phase === "ready";
   const isRevealed = props.phase === "revealed";
@@ -863,7 +874,7 @@ function TenPullResultCard(props: {
   hasRarePull: boolean;
   phase: TenPullPhase;
 }) {
-  const meta = getGachaRarityMeta(props.pull.rarity);
+  const meta = getGachaRarityMeta(props.pull.rarity, props.pull.rewardAmount);
   const tier = getGachaTierByRarity(props.pull.rarity);
   const isRare =
     props.pull.rarity === "SR" || props.pull.rarity === "SSR" || props.pull.rarity === "UR";

@@ -2,6 +2,7 @@ import { DEFAULT_GACHA_OPEN_DAYS, getGachaPoolStatus, normalizeGachaOpenDays } f
 import {
   createInitialPityState,
   DEFAULT_GACHA_COST,
+  DEFAULT_GACHA_REWARD_TIERS,
   isSrOrHigher,
   rollGachaReward,
   resolveGachaRewardWithPity,
@@ -29,8 +30,10 @@ import type {
   DailyTaskTemplateCreateInput,
   DailyTaskTemplateUpdateInput,
   GachaPull,
+  GachaRewardTier,
   PityState,
   ResourceTransaction,
+  RewardRarity,
   SpendingRecord,
   Task,
   TaskCreateInput,
@@ -48,6 +51,7 @@ type UserSettingsUpdateInput = Pick<
   | "gachaCost"
   | "gachaOpenDays"
   | "taskRewardSettings"
+  | "gachaRewardTiers"
   | "showDevTools"
   | "enablePity"
   | "seriesWeeklyTarget"
@@ -147,6 +151,7 @@ export function createUserSettingsTemplate(date = new Date()): UserSettings {
     gachaCost: DEFAULT_GACHA_COST,
     gachaOpenDays: [...DEFAULT_GACHA_OPEN_DAYS],
     taskRewardSettings: normalizeTaskRewardSettings(DEFAULT_TASK_REWARD_SETTINGS),
+    gachaRewardTiers: DEFAULT_GACHA_REWARD_TIERS.map((t) => ({ ...t })),
     showDevTools: true,
     enablePity: true,
     seriesWeeklyTarget: DEFAULT_SERIES_WEEKLY_TARGET,
@@ -227,6 +232,34 @@ function normalizeTask(candidate: unknown): Task | null {
     weeklyBonusGems: type === "series" && typeof candidate.weeklyBonusGems === "number" ? candidate.weeklyBonusGems : undefined,
     weeklyBonusDust: type === "series" && typeof candidate.weeklyBonusDust === "number" ? candidate.weeklyBonusDust : undefined,
   };
+}
+
+function toGachaRewardTiers(tiers: UserSettings["gachaRewardTiers"]): GachaRewardTier[] {
+  return tiers.map((t) => ({
+    id: `tier_${t.rarity.toLowerCase()}`,
+    poolId: WEEKEND_GACHA_POOL.id,
+    ...t,
+  }));
+}
+
+function normalizeGachaRewardTiers(candidate: unknown) {
+  if (!Array.isArray(candidate) || candidate.length === 0) {
+    return DEFAULT_GACHA_REWARD_TIERS.map((t) => ({ ...t }));
+  }
+
+  const validRarities: RewardRarity[] = ["N", "R", "SR", "SSR", "UR"];
+  const result = validRarities.map((rarity, index) => {
+    const item = candidate.find((c) => c?.rarity === rarity);
+    const defaultTier = DEFAULT_GACHA_REWARD_TIERS[index];
+    return {
+      rarity,
+      probability: typeof item?.probability === "number" && item.probability >= 0 ? item.probability : defaultTier.probability,
+      rewardAmount: typeof item?.rewardAmount === "number" && item.rewardAmount >= 0 ? Math.round(item.rewardAmount) : defaultTier.rewardAmount,
+      displayName: typeof item?.displayName === "string" ? item.displayName : defaultTier.displayName,
+    };
+  });
+
+  return result;
 }
 
 function normalizeDailyTaskTemplate(candidate: unknown): DailyTaskTemplate | null {
@@ -425,6 +458,7 @@ function normalizeUserSettings(candidate: unknown): UserSettings {
       Array.isArray(candidate.gachaOpenDays) ? candidate.gachaOpenDays : defaults.gachaOpenDays,
     ),
     taskRewardSettings: normalizeTaskRewardSettings(candidate.taskRewardSettings),
+    gachaRewardTiers: normalizeGachaRewardTiers(candidate.gachaRewardTiers),
     showDevTools:
       typeof candidate.showDevTools === "boolean" ? candidate.showDevTools : true,
     enablePity:
@@ -633,6 +667,7 @@ export function updateUserSettings(
     input.seriesWeeklyBonusMultiplier,
     baseState.userSettings.seriesWeeklyBonusMultiplier,
   );
+  const gachaRewardTiers = normalizeGachaRewardTiers(input.gachaRewardTiers);
   const timestamp = createTimestamp(now);
 
   const nextState: AppState = {
@@ -643,6 +678,7 @@ export function updateUserSettings(
       gachaCost,
       gachaOpenDays,
       taskRewardSettings,
+      gachaRewardTiers,
       showDevTools,
       enablePity,
       seriesWeeklyTarget,
@@ -1123,7 +1159,8 @@ export function singleGachaPull(baseState = loadAppState(), now = new Date()) {
   }
 
   const timestamp = createTimestamp(now);
-  const tier = rollGachaReward();
+  const customTiers = toGachaRewardTiers(baseState.userSettings.gachaRewardTiers);
+  const tier = rollGachaReward(undefined, customTiers);
   const pull: GachaPull = {
     id: createId("pull"),
     poolId: WEEKEND_GACHA_POOL.id,
@@ -1200,9 +1237,11 @@ export function singleGachaPullWithPity(baseState = loadAppState(), now = new Da
   }
 
   const timestamp = createTimestamp(now);
+  const customTiers = toGachaRewardTiers(baseState.userSettings.gachaRewardTiers);
   const pityResult = resolveGachaRewardWithPity({
     pityState: baseState.pityState,
     enablePity: baseState.userSettings.enablePity,
+    customTiers,
   });
   const tier = pityResult.tier;
   const pull: GachaPull = {
@@ -1295,10 +1334,12 @@ export function performTenPull(baseState = loadAppState(), now = new Date()) {
 
   const timestamp = createTimestamp(now);
   const batchId = createId("pull_batch");
+  const customTiers = toGachaRewardTiers(baseState.userSettings.gachaRewardTiers);
   const sequence = resolveSequentialGachaPulls({
     count: TEN_PULL_COUNT,
     pityState: baseState.pityState,
     enablePity: baseState.userSettings.enablePity,
+    customTiers,
   });
 
   const pulls: GachaPull[] = sequence.results.map((result, index) => ({

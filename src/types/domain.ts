@@ -19,12 +19,20 @@ export type TaskRewardSettings = Record<
   }
 >;
 
+export type GachaTierSetting = {
+  rarity: RewardRarity;
+  probability: number;
+  rewardAmount: number;
+  displayName: string;
+};
+
 export type UserSettings = {
   id: string;
   monthlyBudgetLimit: number;
   gachaCost: number;
   gachaOpenDays: number[];
   taskRewardSettings: TaskRewardSettings;
+  gachaRewardTiers: GachaTierSetting[];
   showDevTools: boolean;
   enablePity: boolean;
   seriesWeeklyTarget: number;

@@ -6,7 +6,7 @@ import { useAppState } from "@/components/app-state-provider";
 import { PlaceholderNote, SectionCard } from "@/components/ui";
 import { formatOpenDaysLabel, WEEKDAY_OPTIONS } from "@/lib/date";
 import { difficultyMeta, normalizeTaskRewardSettings } from "@/lib/task-rewards";
-import type { TaskDifficulty, TaskRewardSettings } from "@/types/domain";
+import type { GachaTierSetting, TaskDifficulty, TaskRewardSettings } from "@/types/domain";
 
 type RewardDraftState = Record<TaskDifficulty, { gems: string; dust: string }>;
 
@@ -63,6 +63,9 @@ export default function SettingsPage() {
   const [enablePity, setEnablePity] = useState(true);
   const [seriesWeeklyTarget, setSeriesWeeklyTarget] = useState("3");
   const [seriesWeeklyBonusMultiplier, setSeriesWeeklyBonusMultiplier] = useState("0.5");
+  const [gachaTiers, setGachaTiers] = useState<GachaTierSetting[]>(
+    appState.userSettings.gachaRewardTiers.map((t) => ({ ...t })),
+  );
   const [rewardDraft, setRewardDraft] = useState<RewardDraftState>(
     createRewardDraft(appState.userSettings.taskRewardSettings),
   );
@@ -82,6 +85,7 @@ export default function SettingsPage() {
     setEnablePity(appState.userSettings.enablePity);
     setSeriesWeeklyTarget(String(appState.userSettings.seriesWeeklyTarget));
     setSeriesWeeklyBonusMultiplier(String(appState.userSettings.seriesWeeklyBonusMultiplier));
+    setGachaTiers(appState.userSettings.gachaRewardTiers.map((t) => ({ ...t })));
     setRewardDraft(createRewardDraft(appState.userSettings.taskRewardSettings));
   }, [appState.userSettings, isHydrated]);
 
@@ -116,6 +120,17 @@ export default function SettingsPage() {
       return "阶段奖励倍率必须在 0-5 之间。";
     }
 
+    const totalProb = gachaTiers.reduce((sum, t) => sum + t.probability, 0);
+    if (Math.abs(totalProb - 1) > 0.001) {
+      return `抽卡概率总和必须为 100%，当前为 ${Math.round(totalProb * 100)}%。`;
+    }
+
+    for (const tier of gachaTiers) {
+      if (tier.rewardAmount < 0 || !Number.isFinite(tier.rewardAmount)) {
+        return `${tier.displayName}的奖励金额不能为负数。`;
+      }
+    }
+
     if (!parsedRewardDraft.ok) {
       return parsedRewardDraft.message;
     }
@@ -124,6 +139,7 @@ export default function SettingsPage() {
   }, [
     gachaCost,
     gachaCostNumber,
+    gachaTiers,
     monthlyBudgetLimit,
     monthlyBudgetNumber,
     parsedRewardDraft,
@@ -167,6 +183,7 @@ export default function SettingsPage() {
       gachaCost: gachaCostNumber,
       gachaOpenDays: selectedDays,
       taskRewardSettings: parsedRewardDraft.settings,
+      gachaRewardTiers: gachaTiers,
       showDevTools,
       enablePity,
       seriesWeeklyTarget: Number(seriesWeeklyTarget),
@@ -320,6 +337,92 @@ export default function SettingsPage() {
               setActionMessage(null);
             }}
           />
+
+          <div className="rounded-[24px] border border-[var(--line)] bg-white/70 p-5">
+            <p className="text-sm font-medium text-stone-700">抽卡概率与奖励设置</p>
+            <p className="muted mt-2 text-sm">
+              调整各稀有度的概率和奖励金额。概率总和必须为 100%。
+            </p>
+            {(() => {
+              const totalProb = gachaTiers.reduce((sum, t) => sum + t.probability, 0);
+              const probOk = Math.abs(totalProb - 1) < 0.001;
+              return (
+                <div className={`mt-3 rounded-[20px] px-4 py-2 text-sm ${probOk ? "bg-teal-50 text-teal-800" : "bg-rose-50 text-rose-700"}`}>
+                  概率总和：{Math.round(totalProb * 100)}%{probOk ? " ✓" : "（必须为 100%）"}
+                </div>
+              );
+            })()}
+            <div className="mt-4 space-y-3">
+              {gachaTiers.map((tier, index) => (
+                <div
+                  key={tier.rarity}
+                  className="grid gap-3 rounded-2xl border border-[var(--line)] bg-[var(--card-strong)] px-4 py-4 sm:grid-cols-[80px_1fr_1fr_1fr]"
+                >
+                  <div className="flex items-center">
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                      tier.rarity === "N" ? "bg-stone-200 text-stone-700" :
+                      tier.rarity === "R" ? "bg-sky-100 text-sky-800" :
+                      tier.rarity === "SR" ? "bg-violet-100 text-violet-800" :
+                      tier.rarity === "SSR" ? "bg-amber-100 text-amber-800" :
+                      "bg-rose-100 text-rose-800"
+                    }`}>
+                      {tier.rarity}
+                    </span>
+                  </div>
+                  <label className="block">
+                    <span className="mb-1 block text-xs text-stone-500">概率（%）</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={Math.round(tier.probability * 100)}
+                      onChange={(event) => {
+                        const newTiers = [...gachaTiers];
+                        newTiers[index] = { ...tier, probability: Number(event.target.value) / 100 };
+                        setGachaTiers(newTiers);
+                        setActionMessage(null);
+                      }}
+                      className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-xs text-stone-500">奖励金额（¥）</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={tier.rewardAmount}
+                      onChange={(event) => {
+                        const newTiers = [...gachaTiers];
+                        newTiers[index] = { ...tier, rewardAmount: Number(event.target.value) };
+                        setGachaTiers(newTiers);
+                        setActionMessage(null);
+                      }}
+                      className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-xs text-stone-500">显示名称</span>
+                    <input
+                      type="text"
+                      value={tier.displayName}
+                      onChange={(event) => {
+                        const newTiers = [...gachaTiers];
+                        newTiers[index] = { ...tier, displayName: event.target.value };
+                        setGachaTiers(newTiers);
+                        setActionMessage(null);
+                      }}
+                      className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none"
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 rounded-[22px] bg-white/65 px-4 py-3 text-sm text-stone-700">
+              {gachaTiers.map((t) => `${t.rarity} ${Math.round(t.probability * 100)}% ¥${t.rewardAmount}`).join(" · ")}
+            </div>
+          </div>
 
           <div className="rounded-[24px] border border-[var(--line)] bg-white/70 p-5">
             <p className="text-sm font-medium text-stone-700">系列任务默认设置</p>

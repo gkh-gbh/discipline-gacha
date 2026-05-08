@@ -42,6 +42,7 @@ type UserSettingsFormInput = Pick<
   | "gachaCost"
   | "gachaOpenDays"
   | "taskRewardSettings"
+  | "gachaRewardTiers"
   | "showDevTools"
   | "enablePity"
   | "seriesWeeklyTarget"
