@@ -43,13 +43,23 @@ beforeEach(() => {
 
 describe("getLocalDateKey", () => {
   it("formats date as YYYY-MM-DD", () => {
-    const date = new Date(2026, 4, 4);
+    const date = new Date(2026, 4, 4, 12);
     expect(getLocalDateKey(date)).toBe("2026-05-04");
   });
 
   it("pads single-digit months and days", () => {
-    const date = new Date(2026, 0, 9);
+    const date = new Date(2026, 0, 9, 12);
     expect(getLocalDateKey(date)).toBe("2026-01-09");
+  });
+
+  it("keeps after-midnight usage on previous day before 3 AM", () => {
+    const date = new Date("2026-05-05T02:59:59");
+    expect(getLocalDateKey(date)).toBe("2026-05-04");
+  });
+
+  it("rolls over to the new day at 3 AM", () => {
+    const date = new Date("2026-05-05T03:00:00");
+    expect(getLocalDateKey(date)).toBe("2026-05-05");
   });
 });
 

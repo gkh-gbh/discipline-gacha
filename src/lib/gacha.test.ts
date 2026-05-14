@@ -62,6 +62,25 @@ describe("rollGachaReward", () => {
     expect(tier.rarity).toBe("UR");
   });
 
+  it("normalizes custom tiers so missing probability is not assigned to UR", () => {
+    const customTiers = GACHA_REWARD_TIERS.map((tier) =>
+      tier.rarity === "N" ? { ...tier, probability: 0.56 } : tier,
+    );
+
+    expect(customTiers.reduce((sum, tier) => sum + tier.probability, 0)).toBeCloseTo(0.96, 10);
+    expect(rollGachaReward(0.95, customTiers).rarity).toBe("SSR");
+    expect(rollGachaReward(0.99, customTiers).rarity).toBe("UR");
+  });
+
+  it("uses relative weights when custom probabilities exceed 100%", () => {
+    const customTiers = GACHA_REWARD_TIERS.map((tier) =>
+      tier.rarity === "N" ? { ...tier, probability: 0.7 } : tier,
+    );
+
+    expect(customTiers.reduce((sum, tier) => sum + tier.probability, 0)).toBeCloseTo(1.1, 10);
+    expect(rollGachaReward(0.64, customTiers).rarity).toBe("R");
+  });
+
   it("probabilities sum to 1", () => {
     const total = GACHA_REWARD_TIERS.reduce((sum, t) => sum + t.probability, 0);
     expect(total).toBeCloseTo(1, 10);

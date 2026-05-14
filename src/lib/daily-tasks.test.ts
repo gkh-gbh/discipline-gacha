@@ -109,6 +109,28 @@ describe("daily task template auto-generation", () => {
     expect(dailyTasks).toHaveLength(1);
   });
 
+  it("treats usage before 3 AM as the previous daily task day", () => {
+    const now = new Date("2026-05-05T02:30:00");
+    const result = addDailyTaskTemplate(
+      { title: "睡前复盘", difficulty: "simple" },
+      state,
+      now,
+    );
+
+    expect(result.tasks[0].date).toBe("2026-05-04");
+  });
+
+  it("creates the new daily task day at 3 AM", () => {
+    const now = new Date("2026-05-05T03:00:00");
+    const result = addDailyTaskTemplate(
+      { title: "晨间计划", difficulty: "simple" },
+      state,
+      now,
+    );
+
+    expect(result.tasks[0].date).toBe("2026-05-05");
+  });
+
   it("daily tasks have correct rewards based on difficulty", () => {
     const now = new Date("2026-05-04T10:00:00");
     const result = addDailyTaskTemplate(

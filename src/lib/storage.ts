@@ -75,6 +75,8 @@ const EMPTY_WALLET: Wallet = {
   updatedAt: "",
 };
 
+const DAILY_ROLLOVER_HOUR = 3;
+
 export const EMPTY_APP_STATE: AppState = {
   tasks: [],
   dailyTaskTemplates: [],
@@ -104,7 +106,10 @@ function padNumber(value: number) {
 }
 
 export function getLocalDateKey(date: Date) {
-  return `${date.getFullYear()}-${padNumber(date.getMonth() + 1)}-${padNumber(date.getDate())}`;
+  const shiftedDate = new Date(date);
+  shiftedDate.setHours(shiftedDate.getHours() - DAILY_ROLLOVER_HOUR);
+
+  return `${shiftedDate.getFullYear()}-${padNumber(shiftedDate.getMonth() + 1)}-${padNumber(shiftedDate.getDate())}`;
 }
 
 function getLocalMonthKey(date: Date) {
@@ -113,10 +118,11 @@ function getLocalMonthKey(date: Date) {
 
 export function getWeekStartKey(date: Date) {
   const d = new Date(date);
+  d.setHours(d.getHours() - DAILY_ROLLOVER_HOUR);
   const day = d.getDay();
   const diff = day === 0 ? 6 : day - 1;
   d.setDate(d.getDate() - diff);
-  return getLocalDateKey(d);
+  return `${d.getFullYear()}-${padNumber(d.getMonth() + 1)}-${padNumber(d.getDate())}`;
 }
 
 function createTimestamp(date = new Date()) {

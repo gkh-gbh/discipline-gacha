@@ -177,12 +177,19 @@ export function getRemainingPullsUntilUrPity(pullsSinceLastUr: number) {
 
 export function rollGachaReward(randomValue = Math.random(), customTiers?: GachaRewardTier[]) {
   const tiers = customTiers ?? GACHA_REWARD_TIERS;
+  const totalProbability = tiers.reduce((sum, tier) => sum + tier.probability, 0);
+
+  if (totalProbability <= 0) {
+    return tiers[0];
+  }
+
+  const normalizedRandomValue = randomValue * totalProbability;
   let cursor = 0;
 
   for (const tier of tiers) {
     cursor += tier.probability;
 
-    if (randomValue < cursor) {
+    if (normalizedRandomValue < cursor) {
       return tier;
     }
   }

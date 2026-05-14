@@ -49,6 +49,14 @@ describe("getWeekStartKey", () => {
     const sunday = new Date("2026-05-03T12:00:00");
     expect(getWeekStartKey(sunday)).toBe("2026-04-27");
   });
+
+  it("uses the previous week before Monday 3 AM", () => {
+    const beforeRollover = new Date("2026-05-04T02:59:59");
+    expect(getWeekStartKey(beforeRollover)).toBe("2026-04-27");
+
+    const afterRollover = new Date("2026-05-04T03:00:00");
+    expect(getWeekStartKey(afterRollover)).toBe("2026-05-04");
+  });
 });
 
 describe("series task weekly tracking", () => {
