@@ -923,6 +923,9 @@ function ManagedTaskList(props: {
           const isEditing = props.editingTaskId === task.id && props.editingTaskDraft !== null;
           const isCompleted = task.status === "completed";
           const isArchived = task.status === "archived";
+          const remainingSeriesCount = task.type === "series" && task.weeklyTarget
+            ? Math.max(task.weeklyTarget - (task.weeklyCompletedCount || 0), 0)
+            : null;
           const draft = isEditing ? props.editingTaskDraft : null;
 
           return (
@@ -1021,38 +1024,48 @@ function ManagedTaskList(props: {
                 </div>
               ) : (
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-medium">{task.title}</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="flex min-w-0 items-start gap-3">
+                    {remainingSeriesCount !== null && !isArchived ? (
                       <span
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${difficultyMeta[task.difficulty].tone}`}
+                        aria-label={`剩余 ${remainingSeriesCount} 次`}
+                        className={`mt-0.5 flex h-7 min-w-7 shrink-0 items-center justify-center rounded-full px-2 text-xs font-semibold ${remainingSeriesCount === 0 ? "bg-teal-100 text-teal-800" : "border border-amber-200 bg-amber-50 text-amber-800"}`}
                       >
-                        {difficultyMeta[task.difficulty].label}
+                        {remainingSeriesCount}
                       </span>
-                      {task.type === "series" ? (
-                        <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-medium text-sky-800">
-                          {getSeriesTaskCategoryLabel(task.category)}
+                    ) : null}
+                    <div className="min-w-0">
+                      <p className="font-medium">{task.title}</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-medium ${difficultyMeta[task.difficulty].tone}`}
+                        >
+                          {difficultyMeta[task.difficulty].label}
                         </span>
-                      ) : null}
-                      <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
-                        +{task.rewardGems} 宝石 / +{task.rewardDust} 星尘
-                      </span>
-                      {task.type === "series" && task.weeklyTarget ? (
-                        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">
-                          本周 {task.weeklyCompletedCount || 0}/{task.weeklyTarget}
+                        {task.type === "series" ? (
+                          <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-medium text-sky-800">
+                            {getSeriesTaskCategoryLabel(task.category)}
+                          </span>
+                        ) : null}
+                        <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
+                          +{task.rewardGems} 宝石 / +{task.rewardDust} 星尘
                         </span>
-                      ) : null}
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          isArchived
-                            ? "bg-stone-200 text-stone-700"
-                            : isCompleted
-                              ? "bg-teal-100 text-teal-800"
-                              : "bg-amber-100 text-amber-800"
-                        }`}
-                      >
-                        {isArchived ? "已归档" : isCompleted ? "已完成" : "进行中"}
-                      </span>
+                        {task.type === "series" && task.weeklyTarget ? (
+                          <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">
+                            本周 {task.weeklyCompletedCount || 0}/{task.weeklyTarget}
+                          </span>
+                        ) : null}
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-medium ${
+                            isArchived
+                              ? "bg-stone-200 text-stone-700"
+                              : isCompleted
+                                ? "bg-teal-100 text-teal-800"
+                                : "bg-amber-100 text-amber-800"
+                          }`}
+                        >
+                          {isArchived ? "已归档" : isCompleted ? "已完成" : "进行中"}
+                        </span>
+                      </div>
                     </div>
                   </div>
 

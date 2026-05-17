@@ -20,9 +20,25 @@ import type {
 
 type RewardDraftState = Record<TaskDifficulty, { gems: string; dust: string }>;
 
+type GachaTierDraft = {
+  rarity: RewardRarity;
+  probabilityPercent: string;
+  rewardAmount: string;
+  displayName: string;
+};
+
 type GachaSimulationResult = ReturnType<typeof simulateGachaPullFrequencies>;
 
 const GACHA_RARITY_ORDER: RewardRarity[] = ["N", "R", "SR", "SSR", "UR"];
+
+function createGachaTierDrafts(tiers: GachaTierSetting[]): GachaTierDraft[] {
+  return tiers.map((tier) => ({
+    rarity: tier.rarity,
+    probabilityPercent: String(Math.round(tier.probability * 100)),
+    rewardAmount: String(tier.rewardAmount),
+    displayName: tier.displayName,
+  }));
+}
 
 function createRewardDraft(settings: TaskRewardSettings): RewardDraftState {
   return {
@@ -68,6 +84,55 @@ function parseRewardDraft(draft: RewardDraftState) {
   };
 }
 
+function parseGachaTierDrafts(drafts: GachaTierDraft[]) {
+  const tiers: GachaTierSetting[] = [];
+
+  for (const draft of drafts) {
+    const probabilityPercent = Number(draft.probabilityPercent);
+    if (
+      !draft.probabilityPercent.trim() ||
+      !Number.isFinite(probabilityPercent) ||
+      probabilityPercent < 0 ||
+      probabilityPercent > 100
+    ) {
+      return {
+        ok: false as const,
+        message: `${draft.rarity} 的概率必须是 0-100 之间的数字。`,
+      };
+    }
+
+    const rewardAmount = Number(draft.rewardAmount);
+    if (!draft.rewardAmount.trim() || !Number.isFinite(rewardAmount) || rewardAmount < 0) {
+      return {
+        ok: false as const,
+        message: `${draft.rarity} 的奖励金额必须是大于等于 0 的数字。`,
+      };
+    }
+
+    tiers.push({
+      rarity: draft.rarity,
+      probability: probabilityPercent / 100,
+      rewardAmount: Math.round(rewardAmount),
+      displayName: draft.displayName,
+    });
+  }
+
+  const totalProbability = tiers.reduce((sum, tier) => sum + tier.probability, 0);
+
+  if (Math.abs(totalProbability - 1) > 0.001) {
+    return {
+      ok: false as const,
+      message: `抽卡概率总和必须为 100%，当前为 ${Math.round(totalProbability * 100)}%。`,
+    };
+  }
+
+  return {
+    ok: true as const,
+    tiers,
+    totalProbability,
+  };
+}
+
 export default function SettingsPage() {
   const { resetAppState, addDevGems, updateUserSettings, appState, isHydrated } = useAppState();
   const [monthlyBudgetLimit, setMonthlyBudgetLimit] = useState("");
@@ -79,8 +144,8 @@ export default function SettingsPage() {
   const [urPityThreshold, setUrPityThreshold] = useState("100");
   const [seriesWeeklyTarget, setSeriesWeeklyTarget] = useState("3");
   const [seriesWeeklyBonusMultiplier, setSeriesWeeklyBonusMultiplier] = useState("0.5");
-  const [gachaTiers, setGachaTiers] = useState<GachaTierSetting[]>(
-    appState.userSettings.gachaRewardTiers.map((t) => ({ ...t })),
+  const [gachaTierDrafts, setGachaTierDrafts] = useState<GachaTierDraft[]>(
+    createGachaTierDrafts(appState.userSettings.gachaRewardTiers),
   );
   const [rewardDraft, setRewardDraft] = useState<RewardDraftState>(
     createRewardDraft(appState.userSettings.taskRewardSettings),
@@ -105,13 +170,17 @@ export default function SettingsPage() {
     setUrPityThreshold(String(appState.userSettings.urPityThreshold));
     setSeriesWeeklyTarget(String(appState.userSettings.seriesWeeklyTarget));
     setSeriesWeeklyBonusMultiplier(String(appState.userSettings.seriesWeeklyBonusMultiplier));
-    setGachaTiers(appState.userSettings.gachaRewardTiers.map((t) => ({ ...t })));
+    setGachaTierDrafts(createGachaTierDrafts(appState.userSettings.gachaRewardTiers));
     setRewardDraft(createRewardDraft(appState.userSettings.taskRewardSettings));
   }, [appState.userSettings, isHydrated]);
 
   const monthlyBudgetNumber = Number(monthlyBudgetLimit);
   const gachaCostNumber = Number(gachaCost);
   const parsedRewardDraft = useMemo(() => parseRewardDraft(rewardDraft), [rewardDraft]);
+  const parsedGachaTierDrafts = useMemo(
+    () => parseGachaTierDrafts(gachaTierDrafts),
+    [gachaTierDrafts],
+  );
 
   const validationMessage = useMemo(() => {
     if (
@@ -158,15 +227,8 @@ export default function SettingsPage() {
       return "UR 保底阈值必须是大于等于 1 的整数。";
     }
 
-    const totalProb = gachaTiers.reduce((sum, t) => sum + t.probability, 0);
-    if (Math.abs(totalProb - 1) > 0.001) {
-      return `抽卡概率总和必须为 100%，当前为 ${Math.round(totalProb * 100)}%。`;
-    }
-
-    for (const tier of gachaTiers) {
-      if (tier.rewardAmount < 0 || !Number.isFinite(tier.rewardAmount)) {
-        return `${tier.displayName}的奖励金额不能为负数。`;
-      }
+    if (!parsedGachaTierDrafts.ok) {
+      return parsedGachaTierDrafts.message;
     }
 
     if (!parsedRewardDraft.ok) {
@@ -177,7 +239,7 @@ export default function SettingsPage() {
   }, [
     gachaCost,
     gachaCostNumber,
-    gachaTiers,
+    parsedGachaTierDrafts,
     monthlyBudgetLimit,
     monthlyBudgetNumber,
     parsedRewardDraft,
@@ -213,7 +275,7 @@ export default function SettingsPage() {
   function handleSave(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (validationMessage || !parsedRewardDraft.ok) {
+    if (validationMessage || !parsedRewardDraft.ok || !parsedGachaTierDrafts.ok) {
       setActionMessage(validationMessage ?? "设置无效。");
       return;
     }
@@ -223,7 +285,7 @@ export default function SettingsPage() {
       gachaCost: gachaCostNumber,
       gachaOpenDays: selectedDays,
       taskRewardSettings: parsedRewardDraft.settings,
-      gachaRewardTiers: gachaTiers,
+      gachaRewardTiers: parsedGachaTierDrafts.tiers,
       showDevTools,
       enablePity,
       srPityThreshold: Number(srPityThreshold),
@@ -461,7 +523,10 @@ export default function SettingsPage() {
               调整各稀有度的概率和奖励金额。概率总和必须为 100%。
             </p>
             {(() => {
-              const totalProb = gachaTiers.reduce((sum, t) => sum + t.probability, 0);
+              const totalProb = gachaTierDrafts.reduce(
+                (sum, tier) => sum + (Number(tier.probabilityPercent) || 0) / 100,
+                0,
+              );
               const probOk = Math.abs(totalProb - 1) < 0.001;
               return (
                 <div className={`mt-3 rounded-[20px] px-4 py-2 text-sm ${probOk ? "bg-teal-50 text-teal-800" : "bg-rose-50 text-rose-700"}`}>
@@ -470,7 +535,7 @@ export default function SettingsPage() {
               );
             })()}
             <div className="mt-4 space-y-3">
-              {gachaTiers.map((tier, index) => (
+              {gachaTierDrafts.map((tier, index) => (
                 <div
                   key={tier.rarity}
                   className="grid gap-3 rounded-2xl border border-[var(--line)] bg-[var(--card-strong)] px-4 py-4 sm:grid-cols-[80px_1fr_1fr_1fr]"
@@ -493,11 +558,11 @@ export default function SettingsPage() {
                       min="0"
                       max="100"
                       step="1"
-                      value={Math.round(tier.probability * 100)}
+                      value={tier.probabilityPercent}
                       onChange={(event) => {
-                        const newTiers = [...gachaTiers];
-                        newTiers[index] = { ...tier, probability: Number(event.target.value) / 100 };
-                        setGachaTiers(newTiers);
+                        const newTiers = [...gachaTierDrafts];
+                        newTiers[index] = { ...tier, probabilityPercent: event.target.value };
+                        setGachaTierDrafts(newTiers);
                         setActionMessage(null);
                       }}
                       className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none"
@@ -511,9 +576,9 @@ export default function SettingsPage() {
                       step="1"
                       value={tier.rewardAmount}
                       onChange={(event) => {
-                        const newTiers = [...gachaTiers];
-                        newTiers[index] = { ...tier, rewardAmount: Number(event.target.value) };
-                        setGachaTiers(newTiers);
+                        const newTiers = [...gachaTierDrafts];
+                        newTiers[index] = { ...tier, rewardAmount: event.target.value };
+                        setGachaTierDrafts(newTiers);
                         setActionMessage(null);
                       }}
                       className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none"
@@ -525,9 +590,9 @@ export default function SettingsPage() {
                       type="text"
                       value={tier.displayName}
                       onChange={(event) => {
-                        const newTiers = [...gachaTiers];
+                        const newTiers = [...gachaTierDrafts];
                         newTiers[index] = { ...tier, displayName: event.target.value };
-                        setGachaTiers(newTiers);
+                        setGachaTierDrafts(newTiers);
                         setActionMessage(null);
                       }}
                       className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none"
@@ -537,7 +602,7 @@ export default function SettingsPage() {
               ))}
             </div>
             <div className="mt-3 rounded-[22px] bg-white/65 px-4 py-3 text-sm text-stone-700">
-              {gachaTiers.map((t) => `${t.rarity} ${Math.round(t.probability * 100)}% ¥${t.rewardAmount}`).join(" · ")}
+              {gachaTierDrafts.map((t) => `${t.rarity} ${t.probabilityPercent || "?"}% ¥${t.rewardAmount || "?"}`).join(" · ")}
             </div>
           </div>
 

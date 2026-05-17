@@ -169,6 +169,9 @@ export function TaskPreviewList(props: {
           const isCompleted = item.status === "completed";
           const isWeeklyTargetReached = item.type === "series" && item.weeklyTarget
             && (item.weeklyCompletedCount || 0) >= item.weeklyTarget;
+          const remainingSeriesCount = item.type === "series" && item.weeklyTarget
+            ? Math.max(item.weeklyTarget - (item.weeklyCompletedCount || 0), 0)
+            : null;
           const showCheckIcon = isCompleted || isWeeklyTargetReached;
 
           return (
@@ -180,6 +183,13 @@ export function TaskPreviewList(props: {
                 <div className="flex min-w-0 items-start gap-3">
                   {showCheckIcon ? (
                     <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-teal-700" />
+                  ) : remainingSeriesCount !== null ? (
+                    <span
+                      aria-label={`剩余 ${remainingSeriesCount} 次`}
+                      className="mt-0.5 flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full border border-amber-200 bg-amber-50 px-1.5 text-xs font-semibold text-amber-800"
+                    >
+                      {remainingSeriesCount}
+                    </span>
                   ) : (
                     <CircleDashed className="mt-0.5 h-5 w-5 shrink-0 text-stone-400" />
                   )}
