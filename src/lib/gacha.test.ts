@@ -3,6 +3,7 @@ import {
   rollGachaReward,
   resolveGachaRewardWithPity,
   resolveSequentialGachaPulls,
+  simulateGachaPullFrequencies,
   isSrOrHigher,
   getRemainingPullsUntilSrPity,
   getRemainingPullsUntilUrPity,
@@ -325,6 +326,32 @@ describe("resolveSequentialGachaPulls", () => {
     expect(result.results[0].rarity).toBe("SR");
     expect(result.results[0].pityTriggered).toBe(true);
     expect(result.nextPityState.pullsSinceLastSR).toBe(0);
+  });
+});
+
+describe("simulateGachaPullFrequencies", () => {
+  it("counts simulated pulls without returning individual records", () => {
+    const result = simulateGachaPullFrequencies({
+      count: 5,
+      pityState: makePityState(),
+      enablePity: false,
+    });
+
+    const total = Object.values(result.counts).reduce((sum, count) => sum + count, 0);
+    expect(result.count).toBe(5);
+    expect(total).toBe(5);
+    expect(Object.values(result.frequencies).reduce((sum, rate) => sum + rate, 0)).toBeCloseTo(1, 10);
+  });
+
+  it("applies pity during simulation", () => {
+    const result = simulateGachaPullFrequencies({
+      count: 1,
+      pityState: makePityState({ pullsSinceLastSR: SR_PITY_THRESHOLD - 1 }),
+      enablePity: true,
+    });
+
+    expect(result.counts.SR).toBe(1);
+    expect(result.pityTriggeredCount).toBe(1);
   });
 });
 

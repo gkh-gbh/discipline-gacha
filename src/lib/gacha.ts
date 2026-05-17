@@ -280,6 +280,59 @@ export function resolveSequentialGachaPulls(options: {
   };
 }
 
+export function simulateGachaPullFrequencies(options: {
+  count: number;
+  pityState: PityState;
+  enablePity: boolean;
+  customTiers?: GachaRewardTier[];
+  srPityThreshold?: number;
+  urPityThreshold?: number;
+}) {
+  const counts: Record<RewardRarity, number> = {
+    N: 0,
+    R: 0,
+    SR: 0,
+    SSR: 0,
+    UR: 0,
+  };
+  let currentPityState = { ...options.pityState };
+  let pityTriggeredCount = 0;
+
+  for (let index = 0; index < options.count; index += 1) {
+    const result = resolveGachaRewardWithPity({
+      pityState: currentPityState,
+      enablePity: options.enablePity,
+      customTiers: options.customTiers,
+      srPityThreshold: options.srPityThreshold,
+      urPityThreshold: options.urPityThreshold,
+    });
+
+    counts[result.tier.rarity] += 1;
+    if (result.pityTriggered) {
+      pityTriggeredCount += 1;
+    }
+
+    currentPityState = {
+      ...currentPityState,
+      pullsSinceLastSR: result.nextPullsSinceLastSR,
+      pullsSinceLastSSR: result.nextPullsSinceLastSSR,
+    };
+  }
+
+  return {
+    count: options.count,
+    counts,
+    frequencies: Object.fromEntries(
+      Object.entries(counts).map(([rarity, rarityCount]) => [
+        rarity,
+        options.count > 0 ? rarityCount / options.count : 0,
+      ]),
+    ) as Record<RewardRarity, number>,
+    pityTriggeredCount,
+    nextPityState: currentPityState,
+  };
+}
+
 export function formatPullResult(pull: GachaPull) {
   const tier = getGachaTierByRarity(pull.rarity);
   const pitySuffix = pull.pityTriggered ? " · 保底触发" : "";

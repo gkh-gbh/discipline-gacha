@@ -5,10 +5,24 @@ import { useEffect, useMemo, useState } from "react";
 import { useAppState } from "@/components/app-state-provider";
 import { PlaceholderNote, SectionCard } from "@/components/ui";
 import { formatOpenDaysLabel, WEEKDAY_OPTIONS } from "@/lib/date";
+import {
+  simulateGachaPullFrequencies,
+  WEEKEND_GACHA_POOL,
+} from "@/lib/gacha";
 import { difficultyMeta, normalizeTaskRewardSettings } from "@/lib/task-rewards";
-import type { GachaTierSetting, TaskDifficulty, TaskRewardSettings } from "@/types/domain";
+import type {
+  GachaRewardTier,
+  GachaTierSetting,
+  RewardRarity,
+  TaskDifficulty,
+  TaskRewardSettings,
+} from "@/types/domain";
 
 type RewardDraftState = Record<TaskDifficulty, { gems: string; dust: string }>;
+
+type GachaSimulationResult = ReturnType<typeof simulateGachaPullFrequencies>;
+
+const GACHA_RARITY_ORDER: RewardRarity[] = ["N", "R", "SR", "SSR", "UR"];
 
 function createRewardDraft(settings: TaskRewardSettings): RewardDraftState {
   return {
@@ -71,6 +85,8 @@ export default function SettingsPage() {
   const [rewardDraft, setRewardDraft] = useState<RewardDraftState>(
     createRewardDraft(appState.userSettings.taskRewardSettings),
   );
+  const [simulationPullCount, setSimulationPullCount] = useState("1000");
+  const [simulationResult, setSimulationResult] = useState<GachaSimulationResult | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const shouldShowDevTools = appState.userSettings.showDevTools;
@@ -234,6 +250,33 @@ export default function SettingsPage() {
   function handleAddDevGems() {
     addDevGems(500);
     setActionMessage("已增加 500 宝石。");
+  }
+
+  function handleRunGachaSimulation() {
+    const count = Number(simulationPullCount);
+
+    if (!simulationPullCount.trim() || !Number.isInteger(count) || count < 1) {
+      setActionMessage("抽卡测试次数必须是大于等于 1 的整数。");
+      return;
+    }
+
+    const customTiers: GachaRewardTier[] = appState.userSettings.gachaRewardTiers.map((tier) => ({
+      id: `tier_${tier.rarity.toLowerCase()}`,
+      poolId: WEEKEND_GACHA_POOL.id,
+      ...tier,
+    }));
+
+    setSimulationResult(
+      simulateGachaPullFrequencies({
+        count,
+        pityState: appState.pityState,
+        enablePity: appState.userSettings.enablePity,
+        customTiers,
+        srPityThreshold: appState.userSettings.srPityThreshold,
+        urPityThreshold: appState.userSettings.urPityThreshold,
+      }),
+    );
+    setActionMessage(`已完成 ${count.toLocaleString("zh-CN")} 次无记录抽卡测试。`);
   }
 
   function handleExportData() {
@@ -693,6 +736,61 @@ export default function SettingsPage() {
               导入数据 (JSON)
             </button>
           </div>
+
+          {shouldShowDevTools ? (
+            <div className="mt-5 rounded-[24px] border border-[var(--line)] bg-white/70 p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-sm font-medium text-stone-700">抽卡概率快速测试</p>
+                  <p className="muted mt-2 text-sm leading-6">
+                    按当前概率和保底配置连续模拟抽卡；不扣宝石，不写入抽卡记录，也不播放动画。
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <InputField
+                    label="测试抽数"
+                    value={simulationPullCount}
+                    min="1"
+                    onChange={(value) => {
+                      setSimulationPullCount(value);
+                      setActionMessage(null);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRunGachaSimulation}
+                    className="rounded-2xl bg-stone-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-stone-700"
+                  >
+                    开始测试
+                  </button>
+                </div>
+              </div>
+
+              {simulationResult ? (
+                <div className="mt-5 space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                    {GACHA_RARITY_ORDER.map((rarity) => (
+                      <div
+                        key={rarity}
+                        className="rounded-2xl border border-[var(--line)] bg-[var(--card-strong)] px-4 py-4"
+                      >
+                        <p className="text-xs font-semibold text-stone-500">{rarity}</p>
+                        <p className="mt-2 text-2xl font-semibold text-stone-900">
+                          {simulationResult.counts[rarity].toLocaleString("zh-CN")} 次
+                        </p>
+                        <p className="muted mt-1 text-sm">
+                          {(simulationResult.frequencies[rarity] * 100).toFixed(2)}%
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="rounded-[20px] bg-stone-100 px-4 py-3 text-sm text-stone-700">
+                    共模拟 {simulationResult.count.toLocaleString("zh-CN")} 抽；保底触发 {simulationResult.pityTriggeredCount.toLocaleString("zh-CN")} 次。
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </SectionCard>
       </div>
 
