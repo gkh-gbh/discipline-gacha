@@ -80,7 +80,7 @@ export function getRewardPreviewLabel(
   rewardSettings: TaskRewardSettings = DEFAULT_TASK_REWARD_SETTINGS,
 ) {
   const reward = rewardSettings[difficulty];
-  return `${reward.gems} 宝石 / ${reward.dust} 星尘`;
+  return `${reward.gems} 宝石 / ${reward.dust} 积分`;
 }
 
 export function getTaskRewardSettingsFromUserSettings(userSettings: UserSettings) {

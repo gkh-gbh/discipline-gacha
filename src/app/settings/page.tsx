@@ -13,6 +13,7 @@ import { difficultyMeta, normalizeTaskRewardSettings } from "@/lib/task-rewards"
 import type {
   GachaRewardTier,
   GachaTierSetting,
+  RedeemOptionSetting,
   RewardRarity,
   TaskDifficulty,
   TaskRewardSettings,
@@ -27,6 +28,12 @@ type GachaTierDraft = {
   displayName: string;
 };
 
+type RedeemOptionDraft = {
+  id: string;
+  dustCost: string;
+  rewardAmount: string;
+};
+
 type GachaSimulationResult = ReturnType<typeof simulateGachaPullFrequencies>;
 
 const GACHA_RARITY_ORDER: RewardRarity[] = ["N", "R", "SR", "SSR", "UR"];
@@ -37,6 +44,14 @@ function createGachaTierDrafts(tiers: GachaTierSetting[]): GachaTierDraft[] {
     probabilityPercent: String(Math.round(tier.probability * 100)),
     rewardAmount: String(tier.rewardAmount),
     displayName: tier.displayName,
+  }));
+}
+
+function createRedeemOptionDrafts(options: RedeemOptionSetting[]): RedeemOptionDraft[] {
+  return options.map((option) => ({
+    id: option.id,
+    dustCost: String(option.dustCost),
+    rewardAmount: String(option.rewardAmount),
   }));
 }
 
@@ -64,7 +79,7 @@ function parseRewardDraft(draft: RewardDraftState) {
     if (!isNonNegativeIntegerString(reward.gems) || !isNonNegativeIntegerString(reward.dust)) {
       return {
         ok: false as const,
-        message: `${difficultyMeta[difficulty].label} 的宝石和星尘奖励必须是大于等于 0 的整数。`,
+        message: `${difficultyMeta[difficulty].label} 的宝石和积分奖励必须是大于等于 0 的整数。`,
       };
     }
   }
@@ -133,6 +148,40 @@ function parseGachaTierDrafts(drafts: GachaTierDraft[]) {
   };
 }
 
+function parseRedeemOptionDrafts(drafts: RedeemOptionDraft[]) {
+  const options: RedeemOptionSetting[] = [];
+
+  for (const draft of drafts) {
+    if (!isNonNegativeIntegerString(draft.dustCost)) {
+      return {
+        ok: false as const,
+        message: "积分兑换所需积分必须是大于等于 0 的整数。",
+      };
+    }
+
+    if (!isNonNegativeIntegerString(draft.rewardAmount)) {
+      return {
+        ok: false as const,
+        message: "积分兑换奖励金额必须是大于等于 0 的整数。",
+      };
+    }
+
+    const dustCost = Number(draft.dustCost);
+    const rewardAmount = Number(draft.rewardAmount);
+    options.push({
+      id: draft.id,
+      dustCost,
+      rewardAmount,
+      label: `${dustCost} 积分兑换 ¥${rewardAmount}`,
+    });
+  }
+
+  return {
+    ok: true as const,
+    options,
+  };
+}
+
 export default function SettingsPage() {
   const { resetAppState, addDevGems, updateUserSettings, appState, isHydrated } = useAppState();
   const [monthlyBudgetLimit, setMonthlyBudgetLimit] = useState("");
@@ -146,6 +195,9 @@ export default function SettingsPage() {
   const [seriesWeeklyBonusMultiplier, setSeriesWeeklyBonusMultiplier] = useState("0.5");
   const [gachaTierDrafts, setGachaTierDrafts] = useState<GachaTierDraft[]>(
     createGachaTierDrafts(appState.userSettings.gachaRewardTiers),
+  );
+  const [redeemOptionDrafts, setRedeemOptionDrafts] = useState<RedeemOptionDraft[]>(
+    createRedeemOptionDrafts(appState.userSettings.redeemOptions),
   );
   const [rewardDraft, setRewardDraft] = useState<RewardDraftState>(
     createRewardDraft(appState.userSettings.taskRewardSettings),
@@ -171,6 +223,7 @@ export default function SettingsPage() {
     setSeriesWeeklyTarget(String(appState.userSettings.seriesWeeklyTarget));
     setSeriesWeeklyBonusMultiplier(String(appState.userSettings.seriesWeeklyBonusMultiplier));
     setGachaTierDrafts(createGachaTierDrafts(appState.userSettings.gachaRewardTiers));
+    setRedeemOptionDrafts(createRedeemOptionDrafts(appState.userSettings.redeemOptions));
     setRewardDraft(createRewardDraft(appState.userSettings.taskRewardSettings));
   }, [appState.userSettings, isHydrated]);
 
@@ -180,6 +233,10 @@ export default function SettingsPage() {
   const parsedGachaTierDrafts = useMemo(
     () => parseGachaTierDrafts(gachaTierDrafts),
     [gachaTierDrafts],
+  );
+  const parsedRedeemOptionDrafts = useMemo(
+    () => parseRedeemOptionDrafts(redeemOptionDrafts),
+    [redeemOptionDrafts],
   );
 
   const validationMessage = useMemo(() => {
@@ -235,6 +292,10 @@ export default function SettingsPage() {
       return parsedRewardDraft.message;
     }
 
+    if (!parsedRedeemOptionDrafts.ok) {
+      return parsedRedeemOptionDrafts.message;
+    }
+
     return null;
   }, [
     gachaCost,
@@ -243,6 +304,7 @@ export default function SettingsPage() {
     monthlyBudgetLimit,
     monthlyBudgetNumber,
     parsedRewardDraft,
+    parsedRedeemOptionDrafts,
     selectedDays.length,
     srPityThreshold,
     urPityThreshold,
@@ -275,7 +337,12 @@ export default function SettingsPage() {
   function handleSave(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (validationMessage || !parsedRewardDraft.ok || !parsedGachaTierDrafts.ok) {
+    if (
+      validationMessage ||
+      !parsedRewardDraft.ok ||
+      !parsedGachaTierDrafts.ok ||
+      !parsedRedeemOptionDrafts.ok
+    ) {
       setActionMessage(validationMessage ?? "设置无效。");
       return;
     }
@@ -286,6 +353,7 @@ export default function SettingsPage() {
       gachaOpenDays: selectedDays,
       taskRewardSettings: parsedRewardDraft.settings,
       gachaRewardTiers: parsedGachaTierDrafts.tiers,
+      redeemOptions: parsedRedeemOptionDrafts.options,
       showDevTools,
       enablePity,
       srPityThreshold: Number(srPityThreshold),
@@ -675,8 +743,54 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="mt-3 rounded-[22px] bg-white/65 px-4 py-3 text-sm text-stone-700">
-              示例：难度普通（30 宝石/1 星尘），每周目标 {seriesWeeklyTarget} 次，倍率 {seriesWeeklyBonusMultiplier}，
-              阶段奖励 = {Math.round(30 * Number(seriesWeeklyTarget) * Number(seriesWeeklyBonusMultiplier))} 宝石 / {Math.round(1 * Number(seriesWeeklyTarget) * Number(seriesWeeklyBonusMultiplier))} 星尘
+              示例：难度普通（30 宝石/1 积分），每周目标 {seriesWeeklyTarget} 次，倍率 {seriesWeeklyBonusMultiplier}，
+              阶段奖励 = {Math.round(30 * Number(seriesWeeklyTarget) * Number(seriesWeeklyBonusMultiplier))} 宝石 / {Math.round(1 * Number(seriesWeeklyTarget) * Number(seriesWeeklyBonusMultiplier))} 积分
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-[var(--line)] bg-white/70 p-5">
+            <p className="text-sm font-medium text-stone-700">积分兑换设置</p>
+            <p className="muted mt-2 text-sm">
+              调整钱包页各兑换等级所需积分和兑换后获得的快乐预算。
+            </p>
+            <div className="mt-4 space-y-3">
+              {redeemOptionDrafts.map((option, index) => (
+                <div
+                  key={option.id}
+                  className="grid gap-3 rounded-2xl border border-[var(--line)] bg-[var(--card-strong)] px-4 py-4 sm:grid-cols-[120px_1fr_1fr]"
+                >
+                  <div className="flex items-center">
+                    <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">
+                      等级 {index + 1}
+                    </span>
+                  </div>
+                  <InputField
+                    label="所需积分"
+                    value={option.dustCost}
+                    min="0"
+                    onChange={(value) => {
+                      const nextOptions = [...redeemOptionDrafts];
+                      nextOptions[index] = { ...option, dustCost: value };
+                      setRedeemOptionDrafts(nextOptions);
+                      setActionMessage(null);
+                    }}
+                  />
+                  <InputField
+                    label="奖励金额（¥）"
+                    value={option.rewardAmount}
+                    min="0"
+                    onChange={(value) => {
+                      const nextOptions = [...redeemOptionDrafts];
+                      nextOptions[index] = { ...option, rewardAmount: value };
+                      setRedeemOptionDrafts(nextOptions);
+                      setActionMessage(null);
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 rounded-[22px] bg-white/65 px-4 py-3 text-sm text-stone-700">
+              {redeemOptionDrafts.map((option) => `${option.dustCost || "?"} 积分 -> ¥${option.rewardAmount || "?"}`).join(" · ")}
             </div>
           </div>
 
@@ -708,7 +822,7 @@ export default function SettingsPage() {
                   />
 
                   <InputField
-                    label="星尘奖励"
+                    label="积分奖励"
                     value={rewardDraft[difficulty].dust}
                     min="0"
                     onChange={(value) => handleRewardChange(difficulty, "dust", value)}

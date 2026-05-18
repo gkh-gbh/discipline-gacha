@@ -59,9 +59,9 @@ export default function StatsPage() {
             tone="teal"
           />
           <StatCard
-            title="本周获得星尘"
+            title="本周获得积分"
             value={`${stats.weekDust}`}
-            hint="本周所有来源的星尘"
+            hint="本周所有来源的积分"
             tone="gold"
           />
           <StatCard

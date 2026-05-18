@@ -108,7 +108,7 @@ export default function TasksPage() {
   const dailyRewardLabel = getRewardPreviewLabel(dailyTemplateDifficulty, rewardSettings);
   const seriesRewardLabel = getRewardPreviewLabel(manualDrafts.series.difficulty, rewardSettings);
   const seriesReward = rewardSettings[manualDrafts.series.difficulty];
-  const seriesWeeklyBonusLabel = `每周完成 ${manualDrafts.series.weeklyTarget} 次，额外获得 ${Math.round(seriesReward.gems * manualDrafts.series.weeklyTarget * 0.5)} 宝石 / ${Math.round(seriesReward.dust * manualDrafts.series.weeklyTarget * 0.5)} 星尘`;
+  const seriesWeeklyBonusLabel = `每周完成 ${manualDrafts.series.weeklyTarget} 次，额外获得 ${Math.round(seriesReward.gems * manualDrafts.series.weeklyTarget * 0.5)} 宝石 / ${Math.round(seriesReward.dust * manualDrafts.series.weeklyTarget * 0.5)} 积分`;
   const mainRewardLabel = getRewardPreviewLabel(manualDrafts.main.difficulty, rewardSettings);
 
   const editingRewardLabel = useMemo(() => {
@@ -242,16 +242,16 @@ export default function TasksPage() {
       const newCount = updatedTask.weeklyCompletedCount || 0;
       const targetReached = newCount >= task.weeklyTarget && prevCount < task.weeklyTarget;
       const bonusText = targetReached
-        ? ` 周目标达成！额外 +${task.weeklyBonusGems || 0} 宝石 / +${task.weeklyBonusDust || 0} 星尘。`
+        ? ` 周目标达成！额外 +${task.weeklyBonusGems || 0} 宝石 / +${task.weeklyBonusDust || 0} 积分。`
         : "";
       pushNotice(
         targetReached ? "周目标达成！" : "任务完成",
-        `${task.title} 本周第 ${newCount}/${task.weeklyTarget} 次，获得 +${task.rewardGems} 宝石 / +${task.rewardDust} 星尘。${bonusText}`,
+        `${task.title} 本周第 ${newCount}/${task.weeklyTarget} 次，获得 +${task.rewardGems} 宝石 / +${task.rewardDust} 积分。${bonusText}`,
       );
     } else {
       pushNotice(
         "任务完成",
-        `${task.title} 已结算，获得 +${task.rewardGems} 宝石 / +${task.rewardDust} 星尘。`,
+        `${task.title} 已结算，获得 +${task.rewardGems} 宝石 / +${task.rewardDust} 积分。`,
       );
     }
   }
@@ -503,7 +503,7 @@ export default function TasksPage() {
                               {difficultyMeta[template.difficulty].label}
                             </span>
                             <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
-                              +{template.rewardGems} 宝石 / +{template.rewardDust} 星尘
+                              +{template.rewardGems} 宝石 / +{template.rewardDust} 积分
                             </span>
                             <span
                               className={`rounded-full px-3 py-1 text-xs font-medium ${
@@ -734,9 +734,6 @@ export default function TasksPage() {
         ) : null}
       </SectionCard>
 
-      <PlaceholderNote title="这轮边界">
-        这次只补任务维护能力，不做首页维护入口、复杂详情页、拖拽排序、多级分类或历史每日任务深度管理。
-      </PlaceholderNote>
     </div>
   );
 }
@@ -1048,7 +1045,7 @@ function ManagedTaskList(props: {
                           </span>
                         ) : null}
                         <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
-                          +{task.rewardGems} 宝石 / +{task.rewardDust} 星尘
+                          +{task.rewardGems} 宝石 / +{task.rewardDust} 积分
                         </span>
                         {task.type === "series" && task.weeklyTarget ? (
                           <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">

@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useAppState } from "@/components/app-state-provider";
 import { FloatingNotice, PlaceholderNote, SectionCard, StatCard, StatGrid } from "@/components/ui";
-import { DUST_REDEEM_OPTIONS } from "@/lib/redeem";
 
 const spendingCategories = [
   { value: "", label: "未分类" },
@@ -18,6 +17,7 @@ const spendingCategories = [
 export default function WalletPage() {
   const { appState, addSpendingRecord, redeemDustReward } = useAppState();
   const { wallet, spendingRecords, userSettings } = appState;
+  const redeemOptions = userSettings.redeemOptions;
 
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -88,7 +88,7 @@ export default function WalletPage() {
   }
 
   function handleRedeem(rewardId: string) {
-    const option = DUST_REDEEM_OPTIONS.find((item) => item.id === rewardId);
+    const option = redeemOptions.find((item) => item.id === rewardId);
 
     if (!option || wallet.dust < option.dustCost) {
       return;
@@ -102,7 +102,7 @@ export default function WalletPage() {
 
     setNotice({
       title: "兑换成功",
-      body: `${option.dustCost} 星尘已兑换为 ¥${option.rewardAmount} 快乐预算。`,
+      body: `${option.dustCost} 积分已兑换为 ¥${option.rewardAmount} 快乐预算。`,
     });
   }
 
@@ -129,7 +129,7 @@ export default function WalletPage() {
             tone="coral"
           />
           <StatCard
-            title="当前星尘"
+            title="当前积分"
             value={`${wallet.dust}`}
             hint="可用于固定兑换快乐预算"
             tone="gold"
@@ -137,7 +137,7 @@ export default function WalletPage() {
           <StatCard
             title="本月已解锁"
             value={`¥${wallet.monthlyUnlockedAmount}`}
-            hint="来自抽卡奖励和星尘兑换"
+            hint="来自抽卡奖励和积分兑换"
             tone="gold"
           />
           <StatCard
@@ -164,13 +164,13 @@ export default function WalletPage() {
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <SectionCard
           eyebrow="Redeem"
-          title="星尘兑换"
+          title="积分兑换"
           description="固定兑换项会直接把快乐预算打进钱包，不限制本月预算上限。"
         >
           <div className="rounded-[24px] border border-[var(--line)] bg-white/65 p-4">
             <div className="mb-4 flex items-center justify-between gap-3 rounded-[20px] bg-stone-100/80 px-4 py-3">
               <div>
-                <p className="text-sm font-medium text-stone-700">当前星尘</p>
+                <p className="text-sm font-medium text-stone-700">当前积分</p>
                 <p className="mt-1 text-2xl font-semibold text-stone-900">{wallet.dust}</p>
               </div>
               <p className="max-w-[220px] text-right text-sm text-stone-600">
@@ -179,7 +179,7 @@ export default function WalletPage() {
             </div>
 
             <div className="space-y-3">
-              {DUST_REDEEM_OPTIONS.map((option) => {
+              {redeemOptions.map((option) => {
                 const canRedeem = wallet.dust >= option.dustCost;
 
                 return (
@@ -190,7 +190,7 @@ export default function WalletPage() {
                     <div>
                       <p className="font-medium text-stone-900">{option.label}</p>
                       <p className="muted mt-1 text-sm">
-                        消耗 {option.dustCost} 星尘，获得 ¥{option.rewardAmount} 快乐预算
+                        消耗 {option.dustCost} 积分，获得 ¥{option.rewardAmount} 快乐预算
                       </p>
                     </div>
                     <button
@@ -199,7 +199,7 @@ export default function WalletPage() {
                       disabled={!canRedeem}
                       className="rounded-2xl bg-stone-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-45"
                     >
-                      {canRedeem ? "立即兑换" : "星尘不足"}
+                      {canRedeem ? "立即兑换" : "积分不足"}
                     </button>
                   </div>
                 );

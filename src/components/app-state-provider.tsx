@@ -43,6 +43,7 @@ type UserSettingsFormInput = Pick<
   | "gachaOpenDays"
   | "taskRewardSettings"
   | "gachaRewardTiers"
+  | "redeemOptions"
   | "showDevTools"
   | "enablePity"
   | "srPityThreshold"

@@ -30,6 +30,6 @@ describe("formatDustRedeemNote", () => {
     const note = formatDustRedeemNote(option);
     expect(note).toContain("10");
     expect(note).toContain("5");
-    expect(note).toContain("星尘兑换");
+    expect(note).toContain("积分兑换");
   });
 });

@@ -50,16 +50,16 @@ export default function HomePage() {
       const newCount = updatedTask.weeklyCompletedCount || 0;
       const targetReached = newCount >= task.weeklyTarget && prevCount < task.weeklyTarget;
       const bonusText = targetReached
-        ? ` 周目标达成！额外 +${task.weeklyBonusGems || 0} 宝石 / +${task.weeklyBonusDust || 0} 星尘。`
+        ? ` 周目标达成！额外 +${task.weeklyBonusGems || 0} 宝石 / +${task.weeklyBonusDust || 0} 积分。`
         : "";
       setNotice({
         title: targetReached ? "周目标达成！" : "任务完成",
-        body: `${task.title} 本周第 ${newCount}/${task.weeklyTarget} 次，获得 +${task.rewardGems} 宝石 / +${task.rewardDust} 星尘。${bonusText}`,
+        body: `${task.title} 本周第 ${newCount}/${task.weeklyTarget} 次，获得 +${task.rewardGems} 宝石 / +${task.rewardDust} 积分。${bonusText}`,
       });
     } else {
       setNotice({
         title: "任务完成",
-        body: `${task.title} 已结算，获得 +${task.rewardGems} 宝石 / +${task.rewardDust} 星尘。`,
+        body: `${task.title} 已结算，获得 +${task.rewardGems} 宝石 / +${task.rewardDust} 积分。`,
       });
     }
   }
@@ -83,7 +83,7 @@ export default function HomePage() {
             tone="teal"
           />
           <StatCard
-            title="当前星尘"
+            title="当前积分"
             value={`${stats.currentDust}`}
             hint="和任务奖励同步结算"
             tone="gold"

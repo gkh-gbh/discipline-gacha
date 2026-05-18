@@ -66,7 +66,7 @@ describe("getRewardByDifficulty", () => {
 
 describe("getRewardPreviewLabel", () => {
   it("formats label correctly", () => {
-    expect(getRewardPreviewLabel("simple")).toBe("10 宝石 / 0 星尘");
-    expect(getRewardPreviewLabel("medium")).toBe("60 宝石 / 3 星尘");
+    expect(getRewardPreviewLabel("simple")).toBe("10 宝石 / 0 积分");
+    expect(getRewardPreviewLabel("medium")).toBe("60 宝石 / 3 积分");
   });
 });

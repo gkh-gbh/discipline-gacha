@@ -202,7 +202,7 @@ export function TaskPreviewList(props: {
                         {difficulty.label}
                       </span>
                       <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
-                        +{item.rewardGems} 宝石 / +{item.rewardDust} 星尘
+                        +{item.rewardGems} 宝石 / +{item.rewardDust} 积分
                       </span>
                       {item.type === "series" ? (
                         <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-medium text-sky-800">

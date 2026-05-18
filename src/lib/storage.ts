@@ -17,7 +17,7 @@ import {
   SERIES_WEEKLY_BONUS_MULTIPLIER,
   TASK_TYPE_ORDER,
 } from "@/lib/task-types";
-import { formatDustRedeemNote, getDustRedeemOption } from "@/lib/redeem";
+import { DEFAULT_REDEEM_OPTIONS, formatDustRedeemNote, getDustRedeemOption } from "@/lib/redeem";
 import {
   DEFAULT_TASK_REWARD_SETTINGS,
   getRewardByDifficulty,
@@ -52,6 +52,7 @@ type UserSettingsUpdateInput = Pick<
   | "gachaOpenDays"
   | "taskRewardSettings"
   | "gachaRewardTiers"
+  | "redeemOptions"
   | "showDevTools"
   | "enablePity"
   | "srPityThreshold"
@@ -160,6 +161,7 @@ export function createUserSettingsTemplate(date = new Date()): UserSettings {
     gachaOpenDays: [...DEFAULT_GACHA_OPEN_DAYS],
     taskRewardSettings: normalizeTaskRewardSettings(DEFAULT_TASK_REWARD_SETTINGS),
     gachaRewardTiers: DEFAULT_GACHA_REWARD_TIERS.map((t) => ({ ...t })),
+    redeemOptions: DEFAULT_REDEEM_OPTIONS.map((option) => ({ ...option })),
     showDevTools: true,
     enablePity: true,
     srPityThreshold: 10,
@@ -270,6 +272,29 @@ function normalizeGachaRewardTiers(candidate: unknown) {
   });
 
   return result;
+}
+
+function normalizeRedeemOptions(candidate: unknown) {
+  if (!Array.isArray(candidate) || candidate.length === 0) {
+    return DEFAULT_REDEEM_OPTIONS.map((option) => ({ ...option }));
+  }
+
+  return DEFAULT_REDEEM_OPTIONS.map((defaultOption) => {
+    const item = candidate.find((option) => option?.id === defaultOption.id);
+    const dustCost = typeof item?.dustCost === "number" && item.dustCost >= 0
+      ? Math.round(item.dustCost)
+      : defaultOption.dustCost;
+    const rewardAmount = typeof item?.rewardAmount === "number" && item.rewardAmount >= 0
+      ? Math.round(item.rewardAmount)
+      : defaultOption.rewardAmount;
+
+    return {
+      id: defaultOption.id,
+      dustCost,
+      rewardAmount,
+      label: `${dustCost} 积分兑换 ¥${rewardAmount}`,
+    };
+  });
 }
 
 function normalizeDailyTaskTemplate(candidate: unknown): DailyTaskTemplate | null {
@@ -469,6 +494,7 @@ function normalizeUserSettings(candidate: unknown): UserSettings {
     ),
     taskRewardSettings: normalizeTaskRewardSettings(candidate.taskRewardSettings),
     gachaRewardTiers: normalizeGachaRewardTiers(candidate.gachaRewardTiers),
+    redeemOptions: normalizeRedeemOptions(candidate.redeemOptions),
     showDevTools:
       typeof candidate.showDevTools === "boolean" ? candidate.showDevTools : true,
     enablePity:
@@ -710,6 +736,7 @@ export function updateUserSettings(
     baseState.userSettings.seriesWeeklyBonusMultiplier,
   );
   const gachaRewardTiers = normalizeGachaRewardTiers(input.gachaRewardTiers);
+  const redeemOptions = normalizeRedeemOptions(input.redeemOptions);
   const srPityThreshold = normalizePositiveNumber(
     input.srPityThreshold,
     baseState.userSettings.srPityThreshold,
@@ -729,6 +756,7 @@ export function updateUserSettings(
       gachaOpenDays,
       taskRewardSettings,
       gachaRewardTiers,
+      redeemOptions,
       showDevTools,
       enablePity,
       srPityThreshold,
@@ -1538,7 +1566,7 @@ export function redeemDustReward(
   baseState = loadAppState(),
   now = new Date(),
 ) {
-  const option = getDustRedeemOption(rewardId);
+  const option = getDustRedeemOption(rewardId, baseState.userSettings.redeemOptions);
   const syncedWallet = syncWalletMonth(baseState.wallet, now);
 
   if (!option || syncedWallet.dust < option.dustCost) {

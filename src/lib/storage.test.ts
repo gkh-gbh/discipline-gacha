@@ -33,6 +33,8 @@ import {
   archiveTask,
   restoreTask,
   deleteTask,
+  updateUserSettings,
+  redeemDustReward,
   APP_STATE_STORAGE_KEY,
 } from "@/lib/storage";
 
@@ -72,6 +74,7 @@ describe("createUserSettingsTemplate", () => {
     expect(settings.enablePity).toBe(true);
     expect(settings.srPityThreshold).toBe(10);
     expect(settings.urPityThreshold).toBe(100);
+    expect(settings.redeemOptions[0]).toMatchObject({ dustCost: 10, rewardAmount: 5 });
   });
 
   it("uses provided date for timestamps", () => {
@@ -113,6 +116,62 @@ describe("loadAppState / saveAppState", () => {
     localStorage.setItem(APP_STATE_STORAGE_KEY, "not-json");
     const state = loadAppState();
     expect(state.tasks).toEqual([]);
+  });
+});
+
+describe("updateUserSettings", () => {
+  it("updates redeem options", () => {
+    const initial = getInitialAppState();
+    const next = updateUserSettings(
+      {
+        monthlyBudgetLimit: initial.userSettings.monthlyBudgetLimit,
+        gachaCost: initial.userSettings.gachaCost,
+        gachaOpenDays: initial.userSettings.gachaOpenDays,
+        taskRewardSettings: initial.userSettings.taskRewardSettings,
+        gachaRewardTiers: initial.userSettings.gachaRewardTiers,
+        redeemOptions: initial.userSettings.redeemOptions.map((option, index) =>
+          index === 0 ? { ...option, dustCost: 12, rewardAmount: 7 } : option,
+        ),
+        showDevTools: initial.userSettings.showDevTools,
+        enablePity: initial.userSettings.enablePity,
+        srPityThreshold: initial.userSettings.srPityThreshold,
+        urPityThreshold: initial.userSettings.urPityThreshold,
+        seriesWeeklyTarget: initial.userSettings.seriesWeeklyTarget,
+        seriesWeeklyBonusMultiplier: initial.userSettings.seriesWeeklyBonusMultiplier,
+      },
+      initial,
+    );
+
+    expect(next.userSettings.redeemOptions[0]).toMatchObject({
+      dustCost: 12,
+      rewardAmount: 7,
+    });
+    expect(next.userSettings.redeemOptions[0].label).toBe("12 积分兑换 ¥7");
+  });
+});
+
+describe("redeemDustReward", () => {
+  it("uses custom redeem option settings", () => {
+    const initial = getInitialAppState();
+    const state = {
+      ...initial,
+      wallet: {
+        ...initial.wallet,
+        dust: 12,
+      },
+      userSettings: {
+        ...initial.userSettings,
+        redeemOptions: initial.userSettings.redeemOptions.map((option, index) =>
+          index === 0 ? { ...option, dustCost: 12, rewardAmount: 7, label: "12 积分兑换 ¥7" } : option,
+        ),
+      },
+    };
+
+    const next = redeemDustReward(state.userSettings.redeemOptions[0].id, state);
+
+    expect(next.wallet.dust).toBe(0);
+    expect(next.wallet.rewardBalance).toBe(7);
+    expect(next.resourceTransactions[0].note).toContain("12 积分");
   });
 });
 

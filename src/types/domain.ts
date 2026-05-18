@@ -26,6 +26,13 @@ export type GachaTierSetting = {
   displayName: string;
 };
 
+export type RedeemOptionSetting = {
+  id: string;
+  dustCost: number;
+  rewardAmount: number;
+  label: string;
+};
+
 export type UserSettings = {
   id: string;
   monthlyBudgetLimit: number;
@@ -33,6 +40,7 @@ export type UserSettings = {
   gachaOpenDays: number[];
   taskRewardSettings: TaskRewardSettings;
   gachaRewardTiers: GachaTierSetting[];
+  redeemOptions: RedeemOptionSetting[];
   showDevTools: boolean;
   enablePity: boolean;
   srPityThreshold: number;
