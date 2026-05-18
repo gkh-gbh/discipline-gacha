@@ -548,6 +548,30 @@ function ensureDailyTasksForDate(baseState: AppState, date = new Date()) {
   };
 }
 
+function ensureSeriesTasksForWeek(baseState: AppState, date = new Date()) {
+  const currentWeekStart = getWeekStartKey(date);
+  let changed = false;
+  const tasks = baseState.tasks.map((task) => {
+    if (task.type !== "series" || task.weekPeriodStart === currentWeekStart) {
+      return task;
+    }
+
+    changed = true;
+    return {
+      ...task,
+      weeklyCompletedCount: 0,
+      weekPeriodStart: currentWeekStart,
+    };
+  });
+
+  return changed
+    ? {
+        ...baseState,
+        tasks,
+      }
+    : baseState;
+}
+
 function normalizeAppState(candidate: unknown): AppState {
   if (!isObject(candidate)) {
     return getInitialAppState();
@@ -652,7 +676,7 @@ export function resetAppState() {
 }
 
 export function ensureAppStateReady(baseState = loadAppState(), now = new Date()) {
-  const nextState = ensureDailyTasksForDate(baseState, now);
+  const nextState = ensureSeriesTasksForWeek(ensureDailyTasksForDate(baseState, now), now);
 
   if (nextState !== baseState) {
     saveAppState(nextState);
@@ -1032,7 +1056,8 @@ export function deleteDailyTaskTemplate(templateId: string, baseState = loadAppS
   return nextState;
 }
 
-export function completeTask(taskId: string, baseState = loadAppState()) {
+export function completeTask(taskId: string, baseState = loadAppState(), now = new Date()) {
+  baseState = ensureSeriesTasksForWeek(baseState, now);
   const targetTask = baseState.tasks.find((task) => task.id === taskId);
 
   if (!targetTask || targetTask.status === "archived") {
@@ -1040,15 +1065,15 @@ export function completeTask(taskId: string, baseState = loadAppState()) {
   }
 
   if (targetTask.type === "series") {
-    return completeSeriesTask(targetTask, baseState);
+    return completeSeriesTask(targetTask, baseState, now);
   }
 
   if (targetTask.status === "completed") {
     return baseState;
   }
 
-  const timestamp = createTimestamp();
-  const syncedWallet = syncWalletMonth(baseState.wallet, new Date(timestamp));
+  const timestamp = createTimestamp(now);
+  const syncedWallet = syncWalletMonth(baseState.wallet, now);
   const completedTask: Task = {
     ...targetTask,
     status: "completed",
@@ -1064,7 +1089,7 @@ export function completeTask(taskId: string, baseState = loadAppState()) {
       gems: syncedWallet.gems + targetTask.rewardGems,
       dust: syncedWallet.dust + targetTask.rewardDust,
       updatedAt: timestamp,
-      month: syncedWallet.month || getLocalMonthKey(new Date()),
+      month: syncedWallet.month || getLocalMonthKey(now),
     },
     resourceTransactions: [
       {
@@ -1085,8 +1110,7 @@ export function completeTask(taskId: string, baseState = loadAppState()) {
   return nextState;
 }
 
-function completeSeriesTask(targetTask: Task, baseState: AppState) {
-  const now = new Date();
+function completeSeriesTask(targetTask: Task, baseState: AppState, now = new Date()) {
   const timestamp = createTimestamp(now);
   const currentWeekStart = getWeekStartKey(now);
   const weekStart = targetTask.weekPeriodStart || currentWeekStart;

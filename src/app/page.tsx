@@ -43,10 +43,11 @@ export default function HomePage() {
     }
 
     const prevCount = task.weeklyCompletedCount || 0;
-    completeTask(taskId);
+    const nextState = completeTask(taskId);
 
     if (task.type === "series" && task.weeklyTarget) {
-      const newCount = prevCount + 1;
+      const updatedTask = nextState.tasks.find((item) => item.id === taskId) ?? task;
+      const newCount = updatedTask.weeklyCompletedCount || 0;
       const targetReached = newCount >= task.weeklyTarget && prevCount < task.weeklyTarget;
       const bonusText = targetReached
         ? ` 周目标达成！额外 +${task.weeklyBonusGems || 0} 宝石 / +${task.weeklyBonusDust || 0} 星尘。`

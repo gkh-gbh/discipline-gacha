@@ -26,6 +26,7 @@ import type { AppState } from "@/types/domain";
 import {
   addTask,
   completeTask,
+  ensureAppStateReady,
   getInitialAppState,
   getWeekStartKey,
 } from "@/lib/storage";
@@ -205,5 +206,36 @@ describe("series task weekly tracking", () => {
     const bonusTxn = result.resourceTransactions.find((t) => t.type === "series_bonus");
     expect(bonusTxn).toBeTruthy();
     expect(bonusTxn?.note).toContain("周目标达成");
+  });
+
+  it("resets series task progress when app state enters a new week", () => {
+    let result = addTask(
+      { title: "跑步", difficulty: "normal", type: "series", weeklyTarget: 3 },
+      state,
+    );
+    const taskId = result.tasks[0].id;
+    result = completeTask(taskId, result, new Date("2026-05-03T12:00:00"));
+    result = completeTask(taskId, result, new Date("2026-05-03T13:00:00"));
+
+    const resetState = ensureAppStateReady(result, new Date("2026-05-04T03:00:00"));
+
+    expect(resetState.tasks[0].weeklyCompletedCount).toBe(0);
+    expect(resetState.tasks[0].weekPeriodStart).toBe("2026-05-04");
+  });
+
+  it("completes only the new week after crossing a week boundary", () => {
+    let result = addTask(
+      { title: "跑步", difficulty: "normal", type: "series", weeklyTarget: 3 },
+      state,
+    );
+    const taskId = result.tasks[0].id;
+    result = completeTask(taskId, result, new Date("2026-05-03T12:00:00"));
+    result = completeTask(taskId, result, new Date("2026-05-03T13:00:00"));
+
+    result = completeTask(taskId, result, new Date("2026-05-04T03:00:00"));
+
+    expect(result.tasks[0].weeklyCompletedCount).toBe(1);
+    expect(result.tasks[0].weekPeriodStart).toBe("2026-05-04");
+    expect(result.resourceTransactions[0].note).toContain("1/3");
   });
 });
