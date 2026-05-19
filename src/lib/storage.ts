@@ -1616,14 +1616,16 @@ export function redeemDustReward(
 }
 
 export function addDevGems(amount = 500, baseState = loadAppState(), now = new Date()) {
-  const normalizedAmount = Number.isFinite(amount) ? Math.max(0, amount) : 0;
+  const syncedWallet = syncWalletMonth(baseState.wallet, now);
+  const normalizedAmount = Number.isFinite(amount)
+    ? Math.max(amount, -syncedWallet.gems)
+    : 0;
 
-  if (normalizedAmount <= 0) {
+  if (normalizedAmount === 0) {
     return baseState;
   }
 
   const timestamp = createTimestamp(now);
-  const syncedWallet = syncWalletMonth(baseState.wallet, now);
 
   const nextState: AppState = {
     ...baseState,
@@ -1640,7 +1642,9 @@ export function addDevGems(amount = 500, baseState = loadAppState(), now = new D
         gemsDelta: normalizedAmount,
         dustDelta: 0,
         rewardBalanceDelta: 0,
-        note: `开发模式补充 ${normalizedAmount} 宝石`,
+        note: normalizedAmount > 0
+          ? `开发模式补充 ${normalizedAmount} 宝石`
+          : `开发模式扣除 ${Math.abs(normalizedAmount)} 宝石`,
         createdAt: timestamp,
       },
       ...baseState.resourceTransactions,

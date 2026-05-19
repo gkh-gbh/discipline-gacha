@@ -4,6 +4,15 @@ import { useAppState } from "@/components/app-state-provider";
 import { SectionCard, StatCard, StatGrid } from "@/components/ui";
 import { getStatsPageData } from "@/lib/app-state";
 
+function formatWeekdayLabel(dateKey: string) {
+  const date = new Date(`${dateKey}T12:00:00`);
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "numeric",
+    day: "numeric",
+    weekday: "short",
+  }).format(date);
+}
+
 export default function StatsPage() {
   const { appState, isHydrated } = useAppState();
 
@@ -126,15 +135,15 @@ export default function StatsPage() {
         <SectionCard eyebrow="Main" title="主线任务进度">
           <div className="mb-4 grid gap-4 sm:grid-cols-2">
             <StatCard
-              title="已完成"
+              title="已完成/归档"
               value={`${stats.mainCompleted}`}
-              hint="个主线任务完成"
+              hint="归档主线也计入完成"
               tone="teal"
             />
             <StatCard
               title="总数"
               value={`${stats.mainTotal}`}
-              hint="个主线任务（含已完成）"
+              hint="个主线任务（含已完成和归档）"
               tone="stone"
             />
           </div>
@@ -158,6 +167,67 @@ export default function StatsPage() {
           ) : null}
         </SectionCard>
       </div>
+
+      <SectionCard
+        eyebrow="Week Tasks"
+        title="本周每日任务情况"
+        description="显示每天完成的系列/主线任务；每日任务只显示未完成项。"
+      >
+        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-7">
+          {stats.weeklyTaskBreakdown.map((day) => (
+            <div
+              key={day.dateKey}
+              className="rounded-[22px] border border-[var(--line)] bg-[var(--card-strong)] px-4 py-4"
+            >
+              <p className="text-sm font-semibold text-stone-800">
+                {formatWeekdayLabel(day.dateKey)}
+              </p>
+              <div className="mt-3 space-y-3">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-teal-700">
+                    完成
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    {day.completedItems.length === 0 ? (
+                      <p className="text-xs text-stone-400">无系列/主线完成</p>
+                    ) : null}
+                    {day.completedItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="rounded-2xl bg-white/70 px-3 py-2 text-xs text-stone-700"
+                      >
+                        <span className="font-medium text-stone-900">{item.title}</span>
+                        <span className="ml-2 rounded-full bg-teal-100 px-2 py-0.5 text-[11px] text-teal-800">
+                          {item.type === "series" ? "系列" : "主线"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-rose-700">
+                    未完成每日
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    {day.unfinishedDailyTasks.length === 0 ? (
+                      <p className="text-xs text-stone-400">无未完成每日任务</p>
+                    ) : null}
+                    {day.unfinishedDailyTasks.map((item) => (
+                      <div
+                        key={item.id}
+                        className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700"
+                      >
+                        {item.title}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </SectionCard>
 
       <SectionCard eyebrow="Wallet" title="钱包汇总">
         <StatGrid className="lg:grid-cols-2 xl:grid-cols-3">

@@ -1,6 +1,6 @@
 import { getLocalDateKey, getWeekStartKey } from "@/lib/storage";
 import { groupSeriesTasksByCategory, TASK_TYPE_ORDER } from "@/lib/task-types";
-import type { AppState, DailyTaskTemplate, Task, TaskType } from "@/types/domain";
+import type { AppState, DailyTaskTemplate, ResourceTransaction, Task, TaskType } from "@/types/domain";
 
 function sortTasks(tasks: Task[]) {
   return [...tasks].sort((left, right) => {
@@ -145,6 +145,11 @@ export function getDashboardStats(state: AppState) {
 export function getStatsPageData(state: AppState) {
   const todayKey = getTodayKey();
   const weekStart = getWeekStartKey(new Date());
+  const weekDays = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(`${weekStart}T12:00:00`);
+    date.setDate(date.getDate() + index);
+    return getLocalDateKey(date);
+  });
 
   const todayCompleted = state.tasks.filter(
     (t) => t.status === "completed" && t.completedAt && getLocalDateKey(new Date(t.completedAt)) === todayKey,
@@ -173,12 +178,63 @@ export function getStatsPageData(state: AppState) {
     }));
 
   const mainCompleted = state.tasks.filter(
-    (t) => t.type === "main" && t.status === "completed",
+    (t) => t.type === "main" && (t.status === "completed" || t.status === "archived"),
   ).length;
   const mainTotal = state.tasks.filter((t) => t.type === "main").length;
 
   const totalUnlocked = state.wallet.monthlyUnlockedAmount;
   const totalSpent = state.spendingRecords.reduce((sum, r) => sum + r.amount, 0);
+
+  const taskById = new Map(state.tasks.map((task) => [task.id, task]));
+  const completedTaskTransactionsByDay = state.resourceTransactions.reduce(
+    (result, transaction) => {
+      if (transaction.type !== "task_reward" || !transaction.relatedTaskId) {
+        return result;
+      }
+
+      const dayKey = getLocalDateKey(new Date(transaction.createdAt));
+      if (!weekDays.includes(dayKey)) {
+        return result;
+      }
+
+      const task = taskById.get(transaction.relatedTaskId);
+      if (!task || (task.type !== "series" && task.type !== "main")) {
+        return result;
+      }
+
+      result[dayKey].push({ transaction, task });
+      return result;
+    },
+    Object.fromEntries(weekDays.map((day) => [day, []])) as Record<
+      string,
+      Array<{ transaction: ResourceTransaction; task: Task }>
+    >,
+  );
+
+  const weeklyTaskBreakdown = weekDays.map((dayKey) => {
+    const completedItems = completedTaskTransactionsByDay[dayKey]
+      .sort((left, right) => left.transaction.createdAt.localeCompare(right.transaction.createdAt))
+      .map(({ transaction, task }) => ({
+        id: transaction.id,
+        title: task.title,
+        type: task.type as "series" | "main",
+        createdAt: transaction.createdAt,
+      }));
+    const unfinishedDailyTasks = state.tasks
+      .filter(
+        (task) => task.type === "daily" && task.date === dayKey && task.status === "active",
+      )
+      .map((task) => ({
+        id: task.id,
+        title: task.title,
+      }));
+
+    return {
+      dateKey: dayKey,
+      completedItems,
+      unfinishedDailyTasks,
+    };
+  });
 
   return {
     todayCompleted,
@@ -190,6 +246,7 @@ export function getStatsPageData(state: AppState) {
     seriesProgress,
     mainCompleted,
     mainTotal,
+    weeklyTaskBreakdown,
     totalUnlocked,
     totalSpent,
   };

@@ -204,6 +204,7 @@ export default function SettingsPage() {
   );
   const [simulationPullCount, setSimulationPullCount] = useState("1000");
   const [simulationResult, setSimulationResult] = useState<GachaSimulationResult | null>(null);
+  const [devGemAmount, setDevGemAmount] = useState("500");
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const shouldShowDevTools = appState.userSettings.showDevTools;
@@ -378,8 +379,26 @@ export default function SettingsPage() {
   }
 
   function handleAddDevGems() {
-    addDevGems(500);
-    setActionMessage("已增加 500 宝石。");
+    const amount = Number(devGemAmount);
+
+    if (!devGemAmount.trim() || !Number.isFinite(amount) || !Number.isInteger(amount) || amount === 0) {
+      setActionMessage("宝石调整数量必须是非 0 整数，可输入负数扣除宝石。");
+      return;
+    }
+
+    const nextState = addDevGems(amount);
+    const actualDelta = nextState.wallet.gems - appState.wallet.gems;
+
+    if (actualDelta === 0) {
+      setActionMessage("宝石数量没有变化，可能已经无法继续扣除。");
+      return;
+    }
+
+    setActionMessage(
+      actualDelta > 0
+        ? `已增加 ${actualDelta} 宝石。`
+        : `已扣除 ${Math.abs(actualDelta)} 宝石。`,
+    );
   }
 
   function handleRunGachaSimulation() {
@@ -886,13 +905,29 @@ export default function SettingsPage() {
             </button>
 
             {shouldShowDevTools ? (
-              <button
-                type="button"
-                onClick={handleAddDevGems}
-                className="rounded-2xl bg-stone-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-stone-700"
-              >
-                增加 500 宝石
-              </button>
+              <div className="rounded-2xl border border-[var(--line)] bg-white/70 px-4 py-4">
+                <p className="text-sm font-medium text-stone-700">调整宝石</p>
+                <p className="muted mt-1 text-xs">输入正数增加，输入负数扣除；不会扣到 0 以下。</p>
+                <div className="mt-3 flex gap-2">
+                  <input
+                    type="number"
+                    step="1"
+                    value={devGemAmount}
+                    onChange={(event) => {
+                      setDevGemAmount(event.target.value);
+                      setActionMessage(null);
+                    }}
+                    className="min-w-0 flex-1 rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddDevGems}
+                    className="rounded-xl bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700"
+                  >
+                    应用
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-[var(--line)] bg-white/55 px-4 py-3 text-sm text-[var(--muted)]">
                 当前未显示开发测试工具。
