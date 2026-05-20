@@ -125,24 +125,23 @@ export default function StatsPage() {
                   </div>
                 </div>
 
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-rose-700">
-                    未完成每日
-                  </p>
-                  <div className="mt-2 space-y-2">
-                    {day.unfinishedDailyTasks.length === 0 ? (
-                      <p className="text-xs text-stone-400">无未完成每日任务</p>
-                    ) : null}
-                    {day.unfinishedDailyTasks.map((item) => (
-                      <div
-                        key={item.id}
-                        className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700"
-                      >
-                        {item.title}
-                      </div>
-                    ))}
+                {day.unfinishedDailyTasks.length > 0 ? (
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.16em] text-rose-700">
+                      未完成每日
+                    </p>
+                    <div className="mt-2 space-y-2">
+                      {day.unfinishedDailyTasks.map((item) => (
+                        <div
+                          key={item.id}
+                          className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700"
+                        >
+                          {item.title}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                ) : null}
               </div>
             </div>
           ))}
