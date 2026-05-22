@@ -539,30 +539,61 @@ function syncWalletMonth(wallet: Wallet, date = new Date()) {
 }
 
 function ensureDailyTasksForDate(baseState: AppState, date = new Date()) {
-  const dateKey = getLocalDateKey(date);
+  return ensureDailyTasksForDates(baseState, [getLocalDateKey(date)], date);
+}
+
+function getBusinessDateKeysInWeekUntil(date = new Date()) {
+  const currentDateKey = getLocalDateKey(date);
+  const weekStartKey = getWeekStartKey(date);
+  const keys: string[] = [];
+  const cursor = new Date(`${weekStartKey}T12:00:00`);
+
+  while (true) {
+    const dateKey = getLocalDateKey(cursor);
+    keys.push(dateKey);
+
+    if (dateKey >= currentDateKey) {
+      break;
+    }
+
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return keys;
+}
+
+function ensureDailyTasksForCurrentWeek(baseState: AppState, date = new Date()) {
+  return ensureDailyTasksForDates(baseState, getBusinessDateKeysInWeekUntil(date), date);
+}
+
+function ensureDailyTasksForDates(baseState: AppState, dateKeys: string[], date = new Date()) {
   const timestamp = createTimestamp(date);
   const existingKeys = new Set(
     baseState.tasks
-      .filter((task) => task.type === "daily" && task.templateId && task.date === dateKey)
+      .filter((task) => task.type === "daily" && task.templateId && task.date)
       .map((task) => `${task.templateId}:${task.date}`),
   );
+  const uniqueDateKeys = [...new Set(dateKeys)].sort();
 
-  const newTasks = baseState.dailyTaskTemplates
-    .filter((template) => template.isActive)
-    .filter((template) => !existingKeys.has(`${template.id}:${dateKey}`))
-    .map<Task>((template) => ({
-      id: createId("task"),
-      type: "daily",
-      templateId: template.id,
-      date: dateKey,
-      title: template.title,
-      status: "active",
-      difficulty: template.difficulty,
-      rewardGems: template.rewardGems,
-      rewardDust: template.rewardDust,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    }));
+  const newTasks = uniqueDateKeys.flatMap((dateKey) =>
+    baseState.dailyTaskTemplates
+      .filter((template) => template.isActive)
+      .filter((template) => getLocalDateKey(new Date(template.createdAt)) <= dateKey)
+      .filter((template) => !existingKeys.has(`${template.id}:${dateKey}`))
+      .map<Task>((template) => ({
+        id: createId("task"),
+        type: "daily",
+        templateId: template.id,
+        date: dateKey,
+        title: template.title,
+        status: "active",
+        difficulty: template.difficulty,
+        rewardGems: template.rewardGems,
+        rewardDust: template.rewardDust,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      })),
+  );
 
   if (newTasks.length === 0) {
     return baseState;
@@ -702,7 +733,7 @@ export function resetAppState() {
 }
 
 export function ensureAppStateReady(baseState = loadAppState(), now = new Date()) {
-  const nextState = ensureSeriesTasksForWeek(ensureDailyTasksForDate(baseState, now), now);
+  const nextState = ensureSeriesTasksForWeek(ensureDailyTasksForCurrentWeek(baseState, now), now);
 
   if (nextState !== baseState) {
     saveAppState(nextState);

@@ -29,6 +29,7 @@ import {
   getLocalDateKey,
   saveAppState,
   loadAppState,
+  ensureAppStateReady,
 } from "@/lib/storage";
 
 describe("daily task template auto-generation", () => {
@@ -160,5 +161,41 @@ describe("daily task template auto-generation", () => {
     );
     expect(todayDailies).toHaveLength(1);
     expect(todayDailies[0].title).toBe("喝水");
+  });
+
+  it("generates missed daily tasks for earlier days in the current week", () => {
+    const monday = new Date("2026-05-04T10:00:00");
+    const stateWithTemplate = addDailyTaskTemplate(
+      { title: "喝水", difficulty: "simple" },
+      state,
+      monday,
+    );
+
+    const readyState = ensureAppStateReady(stateWithTemplate, new Date("2026-05-06T10:00:00"));
+
+    expect(
+      readyState.tasks
+        .filter((task) => task.type === "daily" && task.title === "喝水")
+        .map((task) => task.date)
+        .sort(),
+    ).toEqual(["2026-05-04", "2026-05-05", "2026-05-06"]);
+  });
+
+  it("does not backfill days before a template was created", () => {
+    const wednesday = new Date("2026-05-06T10:00:00");
+    const stateWithTemplate = addDailyTaskTemplate(
+      { title: "新习惯", difficulty: "simple" },
+      state,
+      wednesday,
+    );
+
+    const readyState = ensureAppStateReady(stateWithTemplate, new Date("2026-05-08T10:00:00"));
+
+    expect(
+      readyState.tasks
+        .filter((task) => task.type === "daily" && task.title === "新习惯")
+        .map((task) => task.date)
+        .sort(),
+    ).toEqual(["2026-05-06", "2026-05-07", "2026-05-08"]);
   });
 });
