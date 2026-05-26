@@ -40,14 +40,6 @@ const SPARKLE_PARTICLES = [
   { top: "22%", left: "48%", delay: "40ms", size: "7px" },
 ] as const;
 
-const TEN_PULL_RESULT_LINES: Record<RewardRarity, string> = {
-  N: "普通奖励，预算 +¥5",
-  R: "稀有奖励，预算 +¥15",
-  SR: "手气很好，预算 +¥30",
-  SSR: "高光时刻，预算 +¥80",
-  UR: "传说奖励，预算 +¥200",
-};
-
 const TEN_PULL_PREVIEW_PRESETS: Record<"SSR" | "UR", RewardRarity[]> = {
   SSR: ["N", "R", "N", "R", "SR", "N", "R", "N", "SSR", "SR"],
   UR: ["N", "R", "SR", "N", "R", "SSR", "N", "SR", "UR", "R"],
@@ -186,7 +178,7 @@ export default function PoolPage() {
       return;
     }
 
-    const tier = getGachaTierByRarity(rarity);
+    const tier = rewardTiers.find((item) => item.rarity === rarity) ?? rewardTiers[0];
     setAnimatedPull({
       id: `preview_${rarity}_${Date.now()}`,
       poolId: WEEKEND_GACHA_POOL.id,
@@ -213,7 +205,7 @@ export default function PoolPage() {
     const batchSeed = Date.now();
     const batchId = `preview_batch_${targetRarity}_${batchSeed}`;
     const pulls: GachaPull[] = TEN_PULL_PREVIEW_PRESETS[targetRarity].map((rarity, index) => {
-      const tier = getGachaTierByRarity(rarity);
+      const tier = rewardTiers.find((item) => item.rarity === rarity) ?? rewardTiers[0];
 
       return {
         id: `preview_ten_${targetRarity}_${index}_${batchSeed}`,
@@ -832,7 +824,7 @@ function TenPullRevealOverlay(props: {
 
           <div className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-5 sm:gap-6">
             {state.pulls.map((pull, index) => (
-              <TenPullResultCard
+                <TenPullResultCard
                 key={pull.id}
                 pull={pull}
                 index={index}
@@ -918,7 +910,7 @@ function TenPullResultCard(props: {
         : "gacha-sparkle-epic";
   const sparkleCount =
     props.pull.rarity === "UR" ? 6 : props.pull.rarity === "SSR" ? 5 : 3;
-  const compactResultLine = TEN_PULL_RESULT_LINES[props.pull.rarity];
+  const compactResultLine = meta.resultLine;
   const rarityShellFxClassName =
     props.pull.rarity === "UR"
       ? "gacha-ten-ur-shell"
